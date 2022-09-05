@@ -1,0 +1,9 @@
+{
+  "domain": "charge_calculator",
+  "name": "Charge calculator",
+  "documentation": "https://www.lidblad.com/",
+  "dependencies": [],
+  "codeowners": [],
+  "requirements": [],
+  "iot_class": "cloud_polling"
+}
