@@ -1,6 +1,4 @@
 {
     "name": "Charge calculator",
-    "content_in_root": true,
-    "filename": "__init__.py",
-    "country": ["SE"]
+    "content_in_root": true
   }
