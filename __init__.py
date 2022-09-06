@@ -1,21 +1,41 @@
+from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
-import logging
-from .const import *
+import voluptuous as vol
 
-_LOGGER = logging.getLogger(__name__)
+import homeassistant.helpers.config_validation as cv
+from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.helpers.typing import ConfigType
 
-async def async_setup(hass: HomeAssistant, config_entry: ConfigEntry):
-    
-    def calculate_chage(service_call: ServiceCall):
-        """Calculate chage."""
-        result_state = service_call.data.get(ATTR_NAME, "default")
-        _LOGGER.info(f"result_state = {result_state}.")
-        hass.states.async_set(f"{DOMAIN}.result_state", result_state)
+# The domain of your component. Should be equal to the name of your component.
+DOMAIN = "charge_calculator"
+
+CONF_TOPIC = 'topic'
+DEFAULT_TOPIC = 'home-assistant/mqtt_example'
+
+# Schema to validate the configured MQTT topic
+CONFIG_SCHEMA = vol.Schema({
+    vol.Optional(CONF_TOPIC, default=DEFAULT_TOPIC): cv.string
+})
 
 
-    _LOGGER.info(f"Register {DOMAIN} service.")
-    _LOGGER.info(f"Config_etry: {config_entry}.")
-    hass.services.async_register(DOMAIN, INTEGRATION_NAME, calculate_chage)
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the MQTT async example component."""
+    topic = config[DOMAIN][CONF_TOPIC]
+    entity_id = 'charge_calculator.last_message'
+
+    hass.states.async_set(entity_id, topic)
+
+    # Service to publish a message on MQTT.
+    @callback
+    def set_state_service(call: ServiceCall) -> None:
+        """Service to send a message."""
+        
+        entity_id = 'charge_calculator.last_message'
+        result_state = call.data.get(entity_id, "default")
+        hass.states.async_set(entity_id, result_state)        
+
+    # Register our service with Home Assistant.
+    hass.services.async_register(DOMAIN, 'set_state', set_state_service)
+
+    # Return boolean to indicate that initialization was successfully.
     return True
