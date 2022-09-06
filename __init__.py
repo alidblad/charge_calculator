@@ -14,12 +14,12 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the an async service example component."""
     @callback
-    def my_service(call: ServiceCall) -> None:
+    def calculate_charge_time(call: ServiceCall) -> None:
         """My first service."""
-        _LOGGER.info('Received data', call.data)
+        _LOGGER.info(f"Received data, {call.data}")
 
     # Register our service with Home Assistant.
-    hass.services.async_register(DOMAIN, 'demo', my_service)
+    hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
 
     # Return boolean to indicate that initialization was successfully.
     return True
