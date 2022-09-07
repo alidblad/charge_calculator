@@ -1,7 +1,8 @@
 {
   "domain": "charge_calculator",
   "name": "Charge calculator",
-  "documentation": "https://github.com/home-assistant/example-custom-config/tree/master/custom_components/expose_service_async/",
+  "config_flow": true,
+  "documentation": "https://github.com/alidblad/charge_calculator/",
   "dependencies": [],
   "codeowners": [],
   "requirements": [],
