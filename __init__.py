@@ -1,10 +1,9 @@
 """Custom component Charge Calculator."""
 from __future__ import annotations
-
 import logging
-
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers.typing import ConfigType
+from .const import DOMAIN 
 
 DOMAIN = "charge_calculator"
 _LOGGER = logging.getLogger(__name__)

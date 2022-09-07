@@ -1,0 +1,1 @@
+DOMAIN = "charge_calculator"
