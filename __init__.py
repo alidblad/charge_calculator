@@ -16,9 +16,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _LOGGER.info(f"Received data, data={call.data}")
         _LOGGER.info(f"Nordpol entity={config[DOMAIN]['nordpol_entity']}")
         _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
-        ns = hass.states.get(config[DOMAIN]['nordpol_entity'])
-        nordpol_state = call.data.get(config[DOMAIN]['nordpol_entity'], "default")
-        _LOGGER.info(f"state nordpol={nordpol_state}, ns={ns}")
+        nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
+        _LOGGER.info(f"state nordpol={nordpol_state['today']}")
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
