@@ -13,7 +13,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     @callback
     def calculate_charge_time(call: ServiceCall) -> None:
         """Calculate when to charge."""
-        _LOGGER.info(f"Received data, {call.data}")
+        _LOGGER.info(f"Received data, data={call.data}, config={config}")
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
