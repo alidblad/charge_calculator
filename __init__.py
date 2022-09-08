@@ -1,7 +1,7 @@
 """Custom component Charge Calculator."""
 from __future__ import annotations
 import logging
-from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.core import HomeAssistant, ServiceCall, callback, State
 from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN 
 
@@ -18,8 +18,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
         name = nordpol_state.name
-        np = nordpol_state.as_dict
+        np = State.from_dict(nordpol_state.as_dict)
         _LOGGER.info(f"state nordpol name={name}")
+        _LOGGER.info(f"atributes nordpol={np}")
         _LOGGER.info(f"atributes nordpol={np['today']}")
 
 
