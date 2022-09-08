@@ -17,10 +17,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _LOGGER.info(f"Nordpol entity={config[DOMAIN]['nordpol_entity']}")
         _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
-        _LOGGER.info(f"state nordpol name={nordpol_state}")
         name = nordpol_state.name
+        np = nordpol_state.as_dict
         _LOGGER.info(f"state nordpol name={name}")
-        _LOGGER.info(f"atributes nordpol={nordpol_state.as_dict}")
+        _LOGGER.info(f"atributes nordpol={np['today']}")
 
 
     # Register our service with Home Assistant.
