@@ -19,9 +19,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
         _LOGGER.info(f"nordpol_state={nordpol_state}")
         name = nordpol_state.name
-        np_atattributes = nordpol_state.attributes
         _LOGGER.info(f"state nordpol name={name}")
-        _LOGGER.info(f"state nordpol next_dawn={np_atattributes['next_dawn']}")
+        np_atattributes = nordpol_state.attributes
+        _LOGGER.info(f"state nordpol keys={np_atattributes.keys()}")
+        _LOGGER.info(f"state nordpol next_dawn={np_atattributes['today']}")
 
 
     # Register our service with Home Assistant.
