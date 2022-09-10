@@ -19,7 +19,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
         _LOGGER.info(f"nordpol_state={nordpol_state}")
         name = nordpol_state.name
-        _LOGGER.info(f"state nordpol name={nordpol_state.attributes}")
+        np_atattributes = nordpol_state.attributes
+        _LOGGER.info(f"state nordpol name={name}")
+        _LOGGER.info(f"state nordpol next_dawn={np_atattributes['next_dawn']}")
         #np = State.from_dict(nordpol_state.as_dict)
         #_LOGGER.info(f"atributes nordpol={np}")
         #_LOGGER.info(f"atributes nordpol={np['today']}")
