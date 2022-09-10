@@ -22,9 +22,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         np_atattributes = nordpol_state.attributes
         _LOGGER.info(f"state nordpol name={name}")
         _LOGGER.info(f"state nordpol next_dawn={np_atattributes['next_dawn']}")
-        #np = State.from_dict(nordpol_state.as_dict)
-        #_LOGGER.info(f"atributes nordpol={np}")
-        #_LOGGER.info(f"atributes nordpol={np['today']}")
 
 
     # Register our service with Home Assistant.
