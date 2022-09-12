@@ -1,7 +1,7 @@
 """Custom component Charge Calculator."""
 from __future__ import annotations
 import logging
-from time import time_ns
+import datetime
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.typing import ConfigType
@@ -105,16 +105,19 @@ class ChargeCalculator:
         
         self.logger.info(f"get_lowest_price_period lowest_price_period={lowest_price_period}.") 
         return lowest_price_period
-        
+    
     def get_best_time_to_charge(self):
         # Get all all availible price periods (aapp)
         aapp = self.get_all_availible_price_periods()
         # Sort aapp by ['end'] timestam
-        aapp.sort(key=lambda x: x['end'], reverse=True)
+        # aapp.sort(key=lambda x: x['end'], reverse=False)
         self.logger.info(f"get_lowest_price aapp={aapp}.")
         
         lowest_price_period = self.get_lowest_price_period(aapp)        
-        self.logger.info(f"get_best_time_to_charge lowest_price_period={lowest_price_period}.")
-
+        self.print_price_periods(lowest_price_period)
         self.logger.info(f"get_best_time_to_charge, {lowest_price_period[0]['start']} - {lowest_price_period[-1]['end']}")
         return "hej"    
+
+    def print_price_periods(self, price_periods):
+        for price_period in price_periods:
+            self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}."
