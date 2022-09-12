@@ -1,7 +1,6 @@
 """Custom component Charge Calculator."""
 from __future__ import annotations
 import logging
-import datetime
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.typing import ConfigType
