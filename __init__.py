@@ -43,7 +43,7 @@ class ChargeCalculator:
         for price in raw_today:
             self.logger.info(f"get_lowest_price price={price}.")
             if price['value'] < lowest_price:
-                lowest_price = price.value
+                lowest_price = price['value']
 
         if lowest_price == 1000:
             self.logger.error(f"Error while calulate lowest price, hour_pirces={raw_today}.")
