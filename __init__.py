@@ -104,6 +104,10 @@ class ChargeCalculator:
         
         self.logger.info(f"get_lowest_price_period lowest_price_period={lowest_price_period}.") 
         return lowest_price_period
+
+    def print_price_periods(self, price_periods):
+        for price_period in price_periods:
+            self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}.")
     
     def get_best_time_to_charge(self):
         # Get all all availible price periods (aapp)
@@ -116,7 +120,3 @@ class ChargeCalculator:
         self.print_price_periods(lowest_price_period)
         self.logger.info(f"get_best_time_to_charge, {lowest_price_period[0]['start']} - {lowest_price_period[-1]['end']}")
         return "hej"    
-
-    def print_price_periods(self, price_periods):
-        for price_period in price_periods:
-            self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}.")
