@@ -2,7 +2,8 @@
 from __future__ import annotations
 import logging
 from time import time_ns
-from homeassistant.core import HomeAssistant, ServiceCall, callback, State
+from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN 
 
@@ -19,7 +20,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
         name = nordpol_state.name
-        time_now = hass.util.dt.utcnow()
+        time_now = dt_util.utcnow()
         _LOGGER.info(f"Nordpol name={name}")
         ch = ChargeCalculator(_LOGGER, nordpol_state, time_now)
         aapp = ch.get_all_availible_price_periods()
