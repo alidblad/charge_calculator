@@ -19,7 +19,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
         name = nordpol_state.name
         _LOGGER.info(f"Nordpol name={name}")
-        ch = charge_calculator(_LOGGER, nordpol_state)
+        ch = ChargeCalculator(_LOGGER, nordpol_state)
         lowest_price_today = ch.get_lowest_price()
         _LOGGER.info(f"lowest_price_today={lowest_price_today}.")
 
@@ -29,7 +29,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     # Return boolean to indicate that initialization was successfully.
     return True
 
-class charge_calculator:
+class ChargeCalculator:
     def __init__(self, logger: logging.Logger, nordpol_state):
         self.logger = logger
         self.nordpol_state = nordpol_state
@@ -39,11 +39,13 @@ class charge_calculator:
         raw_today = self.nordpol_attributes['raw_today']
         self.logger.info(f"get_lowest_price raw_today={raw_today}.")
         lowest_price = 1000
-        fail = False
+        
         for price in raw_today:
-            if price.value < lowest_price:
+            self.logger.info(f"get_lowest_price price={price}.")
+            if price['value'] < lowest_price:
                 lowest_price = price.value
+
         if lowest_price == 1000:
             self.logger.error(f"Error while calulate lowest price, hour_pirces={raw_today}.")
-        self.logger.error(f"Lowest price, lowest_price={lowest_price}.")
+        self.logger.info(f"Lowest price, lowest_price={lowest_price}.")
         return lowest_price    
