@@ -57,13 +57,13 @@ class ChargeCalculator:
             aapp.extend(self.filter_future_prices(self.nordpol_attributes['raw_tomorrow']))
         return aapp
 
-    def get_min_price(self, aapp):
-        lowest_price = None
+    def get_min_price_period(self, aapp):
+        lowest_price_period = None
         for price in aapp:
-            self.logger.info(f"get_lowest_price price={price}.")
-            if lowest_price == None or price['value'] < lowest_price:
-                lowest_price = price['value']
-        return lowest_price
+            self.logger.info(f"get_min_price price={price}.")
+            if lowest_price_period == None or price['value'] < lowest_price_period['value']:
+                lowest_price_period = price
+        return lowest_price_period
 
     def get_next_following_price(self, aapp, price_period, next_after=True):
         if next_after:
@@ -87,7 +87,7 @@ class ChargeCalculator:
             return (mean_price / 4) + mean_price
 
     def get_lowest_price_period(self, aapp):
-        lowest_price = self.get_min_price(aapp)
+        lowest_price = self.get_min_price_period(aapp)
         mean_price = lowest_price['value']
         price_period = lowest_price
         lowest_price_period = [ ]
