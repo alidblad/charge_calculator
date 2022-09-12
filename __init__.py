@@ -18,27 +18,32 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
         name = nordpol_state.name
-        np_atattributes = nordpol_state.attributes
-        raw_today = np_atattributes['raw_today']
-        raw_tomorrow = np_atattributes['raw_tomorrow']
-        lowest_price_today = get_lowest_price(raw_today)
-        lowest_price_tomorrow = get_lowest_price(raw_tomorrow)
+        _LOGGER.info(f"Nordpol name={name}")
+        ch = charge_calculator(_LOGGER, nordpol_state)
+        lowest_price_today = ch.get_lowest_price()
         _LOGGER.info(f"lowest_price_today={lowest_price_today}.")
-        _LOGGER.info(f"lowest_price_tomorrow={lowest_price_tomorrow}.")
-
-    def get_lowest_price(hour_pirces: list):
-        _LOGGER.info(f"get_lowest_price hour_pirces={hour_pirces}.")
-        lowest_price = 1000
-        fail = False
-        for price in hour_pirces:
-            if price.value < lowest_price:
-                lowest_price = price.value
-        if lowest_price == 1000:
-            _LOGGER.error(f"Error while calulate lowest price, hour_pirces={hour_pirces}."
-        return lowest_price
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
 
     # Return boolean to indicate that initialization was successfully.
     return True
+
+class charge_calculator:
+    def __init__(self, logger: logging.Logger, nordpol_state):
+        self.logger = logger
+        self.nordpol_state = nordpol_state
+        self.nordpol_attributes = nordpol_state.attributes
+
+    def get_lowest_price(self):
+        raw_today = self.nordpol_attributes['raw_today']
+        self.logger.info(f"get_lowest_price raw_today={raw_today}.")
+        lowest_price = 1000
+        fail = False
+        for price in raw_today:
+            if price.value < lowest_price:
+                lowest_price = price.value
+        if lowest_price == 1000:
+            self.logger.error(f"Error while calulate lowest price, hour_pirces={raw_today}.")
+        self.logger.error(f"Lowest price, lowest_price={lowest_price}.")
+        return lowest_price    
