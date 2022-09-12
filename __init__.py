@@ -99,6 +99,7 @@ class ChargeCalculator:
                 mean_price = (price_period['value'] + next_following_price['value']) / 2
                 lowest_price_period.append(price_period)
                 self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
+                price_period = next_following_price
             else:
                 break
         
