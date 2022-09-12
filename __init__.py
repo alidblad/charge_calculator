@@ -23,9 +23,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         time_now = dt_util.utcnow()
         _LOGGER.info(f"Nordpol name={name}")
         ch = ChargeCalculator(_LOGGER, nordpol_state, time_now)
-        aapp = ch.get_all_availible_price_periods()
-        lowest_price_today = ch.get_lowest_price(aapp)
-        _LOGGER.info(f"lowest_price_today={lowest_price_today}.")
+        get_best_time_to_charge = ch.get_best_time_to_charge()
+        _LOGGER.info(f"get_best_time_to_charge={get_best_time_to_charge}.")
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
@@ -39,12 +38,15 @@ class ChargeCalculator:
         self.nordpol_state = nordpol_state
         self.nordpol_attributes = nordpol_state.attributes
         self.time_now = time_now
+        self.aapp = []
 
     def filter_future_prices(self, prices):
         fp = []
         for price in prices:
             if price['end'] > self.time_now:
                 fp.append(price)
+            else:
+                self.logger.info(f"filter_future_prices price is in the past: {price}.")
         return fp
 
     def get_all_availible_price_periods(self):
@@ -55,16 +57,63 @@ class ChargeCalculator:
             aapp.extend(self.filter_future_prices(self.nordpol_attributes['raw_tomorrow']))
         return aapp
 
-    def get_lowest_price(self, aapp):
-        self.logger.info(f"get_lowest_price aapp={aapp}.")
-        lowest_price = 1000
-        
+    def get_min_price(self, aapp):
+        lowest_price = None
         for price in aapp:
             self.logger.info(f"get_lowest_price price={price}.")
-            if price['value'] < lowest_price:
+            if lowest_price == None or price['value'] < lowest_price:
                 lowest_price = price['value']
+        return lowest_price
 
-        if lowest_price == 1000:
-            self.logger.error(f"Error while calulate lowest price, hour_pirces={raw_today}.")
-        self.logger.info(f"Lowest price, lowest_price={lowest_price}.")
-        return lowest_price    
+    def get_next_following_price(self, aapp, price_period, next_after=True):
+        if next_after:
+            start = "start"
+            end = "end"
+        else:
+            start = "end"
+            end = "start"
+        self.logger.info(f"get_next_following_price start={start}, end={end}.")
+        for price in aapp:
+            if price_period['end'] == price[start]:
+                self.logger.info(f"get_next_following_price = {price}.")
+                return price
+        self.logger.info(f"get_next_following_price not found...")                
+        return None
+
+    def price_diviation(self, mean_price):
+        if mean_price < 1:
+            return (mean_price / 2) + mean_price
+        else:
+            return (mean_price / 4) + mean_price
+
+    def get_lowest_price_period(self, aapp):
+        lowest_price = self.get_min_price(aapp)
+        mean_price = lowest_price['value']
+        price_period = lowest_price
+        lowest_price_period = [ ]
+
+        # Get all next following price within price_diviation
+        while price_period['value'] < self.price_diviation(mean_price):
+            next_following_price = self.get_next_following_price(aapp, price_period)
+            if next_following_price != None:
+                mean_price = (price_period['value'] + next_following_price['value']) / 2
+                lowest_price_period.append(price_period)
+                self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
+            else:
+                break
+        
+        self.logger.info(f"get_lowest_price_period lowest_price_period={lowest_price_period}.") 
+        return lowest_price_period
+        
+    def get_best_time_to_charge(self):
+        # Get all all availible price periods (aapp)
+        aapp = self.get_all_availible_price_periods()
+        # Sort aapp by ['end'] timestam
+        aapp.sort(key=lambda x: x['end'], reverse=True)
+        self.logger.info(f"get_lowest_price aapp={aapp}.")
+        
+        lowest_price_period = self.get_lowest_price_period(aapp)        
+        self.logger.info(f"get_best_time_to_charge lowest_price_period={lowest_price_period}.")
+
+        self.logger.info(f"get_best_time_to_charge, {lowest_price_period[0]['start']} - {lowest_price_period[-1]['end']}")
+        return "hej"    
