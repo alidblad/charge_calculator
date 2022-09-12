@@ -1,11 +1,10 @@
 {
   "domain": "charge_calculator",
   "name": "Charge calculator",
-  "config_flow": true,
   "documentation": "https://github.com/alidblad/charge_calculator/",
   "dependencies": [],
   "codeowners": [],
   "requirements": [],
   "iot_class": "local_polling",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
