@@ -37,7 +37,7 @@ class ChargeCalculator:
         self.nordpol_state = nordpol_state
         self.nordpol_attributes = nordpol_state.attributes
         self.time_now = time_now
-        self.aapp = []
+        self.sd = 0
 
     def filter_future_prices(self, prices):
         fp = []
@@ -79,23 +79,20 @@ class ChargeCalculator:
         self.logger.info(f"get_next_following_price not found...")                
         return None
 
-    def price_diviation(self, mean_price):
-        if mean_price < 1:
-            return (mean_price / 2) + mean_price
-        else:
-            return (mean_price / 4) + mean_price
+    def price_diviation(self, price):
+        return self.sd + price
 
     def get_lowest_price_period(self, aapp):
         lowest_price = self.get_min_price_period(aapp)
-        mean_price = lowest_price['value']
+        #mean_price = lowest_price['value']
         price_period = lowest_price
         lowest_price_period = [ ]
 
         # Get all next following price within price_diviation
-        while price_period['value'] < self.price_diviation(mean_price):
+        while price_period['value'] < lowest_price['value'] + self.sd:
             next_following_price = self.get_next_following_price(aapp, price_period)
             if next_following_price != None:
-                mean_price = (price_period['value'] + next_following_price['value']) / 2
+                #mean_price = (price_period['value'] + next_following_price['value']) / 2
                 lowest_price_period.append(price_period)
                 self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
                 price_period = next_following_price
@@ -105,13 +102,23 @@ class ChargeCalculator:
         self.logger.info(f"get_lowest_price_period lowest_price_period={lowest_price_period}.") 
         return lowest_price_period
 
+    def standard_deviation(self, aapp):
+        values = []
+        for tp in aapp:
+            values.append(tp['value'])
+
+        #calculate population standard deviation of list 
+        return (sum((x-(sum(values) / len(values)))**2 for x in values) / len(values))**0.5
+
     def print_price_periods(self, price_periods):
         for price_period in price_periods:
             self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}.")
     
     def get_best_time_to_charge(self):
-        # Get all all availible price periods (aapp)
+        # Get all all availible price periods (aapp)  
         aapp = self.get_all_availible_price_periods()
+        self.sd = self.standard_deviation(aapp)
+        self.logger.info(f"get_lowest_price standard_deviation={self.sd}.")
         # Sort aapp by ['end'] timestam
         # aapp.sort(key=lambda x: x['end'], reverse=False)
         self.logger.info(f"get_lowest_price aapp={aapp}.")
