@@ -73,7 +73,7 @@ class ChargeCalculator:
             end = "start"
         self.logger.info(f"get_next_following_price start={start}, end={end}.")
         for price in aapp:
-            if price_period['end'] == price[start]:
+            if price_period[end] == price[start]:
                 self.logger.info(f"get_next_following_price = {price}.")
                 return price
         self.logger.info(f"get_next_following_price not found...")                
