@@ -17,13 +17,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _LOGGER.info(f"Nordpol entity={config[DOMAIN]['nordpol_entity']}")
         _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
-        _LOGGER.info(f"nordpol_state={nordpol_state}")
         name = nordpol_state.name
-        _LOGGER.info(f"state nordpol name={name}")
         np_atattributes = nordpol_state.attributes
-        _LOGGER.info(f"state nordpol keys={np_atattributes.keys()}")
-        _LOGGER.info(f"state nordpol next_dawn={np_atattributes['today']}")
+        raw_today = np_atattributes['raw_today']
+        raw_tomorrow = np_atattributes['raw_tomorrow']
+        lowest_price_today = get_lowest_price(raw_today)
+        lowest_price_tomorrow = get_lowest_price(raw_tomorrow)
+        _LOGGER.info(f"lowest_price_today={lowest_price_today}.")
+        _LOGGER.info(f"lowest_price_tomorrow={lowest_price_tomorrow}.")
 
+    def get_lowest_price(hour_pirces: list):
+        _LOGGER.info(f"get_lowest_price hour_pirces={hour_pirces}.")
+        lowest_price = 1000
+        fail = False
+        for price in hour_pirces:
+            if price.value < lowest_price:
+                lowest_price = price.value
+        if lowest_price == 1000:
+            _LOGGER.error(f"Error while calulate lowest price, hour_pirces={hour_pirces}."
+        return lowest_price
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
