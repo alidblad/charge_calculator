@@ -8,13 +8,13 @@ calculate_charge:
       selector:
         select:
           options:
-            - "2"
-            - "3"
-            - "4"
-            - "5"
-            - "6"
-            - "7"
-            - "8"
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
     cutoff:
       name: Price cutoff
       description: Cutoff on price

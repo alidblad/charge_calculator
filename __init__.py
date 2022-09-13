@@ -33,8 +33,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             charge_period = 3
 
         ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, cutoff, charge_period)
-        get_best_time_to_charge = ch.get_best_time_to_charge()
-        _LOGGER.info(f"get_best_time_to_charge={get_best_time_to_charge}.")
+        best_time_to_charge = ch.get_best_time_to_charge()
+        _LOGGER.info(f"get_best_time_to_charge={best_time_to_charge}.")
+        hass.states.set(f"{DOMAIN}.start_time", best_time_to_charge['start'])
+        hass.states.set(f"{DOMAIN}.stop_time", best_time_to_charge['stop'])
+        _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge}.")
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
@@ -180,4 +183,4 @@ class ChargeCalculator:
         lowest_price_period = self.get_lowest_price_period(self.aapp, self.charge_period)        
         self.print_price_periods(lowest_price_period)
         self.logger.info(f"get_best_time_to_charge, {lowest_price_period[0]['start']} - {lowest_price_period[-1]['end']}")
-        return "hej"    
+        return { "start": lowest_price_period[0]['start'], "stop": lowest_price_period[-1]['end'] }   
