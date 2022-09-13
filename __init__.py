@@ -89,7 +89,6 @@ class ChargeCalculator:
         while price_period['value'] < lowest_price['value'] + self.sd:
             next_following_price = self.get_next_following_price(aapp, price_period, next_after)
             if next_following_price != None:
-                #mean_price = (price_period['value'] + next_following_price['value']) / 2
                 lowest_price_period.append(price_period)
                 self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
                 price_period = next_following_price
@@ -99,12 +98,13 @@ class ChargeCalculator:
 
     def get_lowest_price_period(self, aapp):
         lowest_price = self.get_min_price_period(aapp)
-
         # Get lowest price period from lowest and forward
         lowest_price_period = self.get_next_following_price_periods(lowest_price, aapp, True)
         # Get lowest price period from lowest and backward
         lowest_price_period.extend(self.get_next_following_price_periods(lowest_price, aapp, False))
-
+        # Sort 
+        lowest_price_period.sort(key=lambda x: x['end'], reverse=False)
+        
         self.logger.info(f"get_lowest_price_period lowest_price_period={lowest_price_period}.") 
         return lowest_price_period
 
@@ -113,6 +113,7 @@ class ChargeCalculator:
         for tp in aapp:
             values.append(tp['value'])
 
+        self.logger.info(f"standard_deviation values={values}.") 
         #calculate population standard deviation of list 
         return (sum((x-(sum(values) / len(values)))**2 for x in values) / len(values))**0.5
 
