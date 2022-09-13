@@ -49,11 +49,13 @@ class ChargeCalculator:
         return fp
 
     def isfloat(self, num):
-        try:
-            float(num)
-            return True
-        except ValueError:
-            return False
+        if num is not None:
+            try:
+                float(num)
+                return True
+            except ValueError:
+                return False
+        return False
 
     def validade_price(self, price_periods):
         valid_values = True
