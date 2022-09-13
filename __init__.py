@@ -65,10 +65,10 @@ class ChargeCalculator:
 
     def get_all_availible_price_periods(self):
         aapp = []
-        if "raw_today" in self.nordpol_attributes.keys():
-            aapp.extend(self.filter_future_prices(self.validade_price(self.nordpol_attributes['raw_today'])))
-        if "raw_tomorrow" in self.nordpol_attributes.keys():
-            aapp.extend(self.filter_future_prices(self.validade_price(self.nordpol_attributes['raw_tomorrow'])))
+        if "raw_today" in self.nordpol_attributes.keys() and self.validade_price(self.nordpol_attributes['raw_today']):
+            aapp.extend(self.filter_future_prices(self.nordpol_attributes['raw_today']))
+        if "raw_tomorrow" in self.nordpol_attributes.keys() and self.validade_price(self.nordpol_attributes['raw_tomorrow']):
+            aapp.extend(self.filter_future_prices(self.nordpol_attributes['raw_tomorrow']))
         return aapp
 
     def get_min_price_period(self, aapp):
