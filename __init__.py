@@ -41,6 +41,10 @@ class ChargeCalculator:
         self.aapp = self.get_all_availible_price_periods()
         self.sd = self.standard_deviation(self.aapp)
         self.mean = self.calc_mean(self.aapp)
+        self.logger.info(f"Time_now = {self.time_now}.")
+        self.logger.info(f"price_cutoff = {self.price_cutoff}.")
+        self.logger.info(f"sd = {self.sd}.")
+        self.logger.info(f"mean = {self.mean}.")
 
     def filter_future_prices(self, prices):
         fp = []
@@ -81,9 +85,10 @@ class ChargeCalculator:
     def get_min_price_period(self, aapp):
         lowest_price_period = None
         for price in aapp:
-            self.logger.info(f"get_min_price price={price}.")
             if lowest_price_period == None or price['value'] < lowest_price_period['value']:
                 lowest_price_period = price
+
+        self.logger.info(f"lowest_price_period: {lowest_price_period}.")
         return lowest_price_period
 
     def get_next_following_price(self, aapp, price_period, next_after=True):
@@ -93,10 +98,10 @@ class ChargeCalculator:
         else:
             start = "end"
             end = "start"
-        self.logger.info(f"get_next_following_price start={start}, end={end}.")
+        #self.logger.info(f"get_next_following_price start={start}, end={end}.")
         for price in aapp:
             if price_period[end] == price[start]:
-                self.logger.info(f"get_next_following_price = {price}.")
+                #self.logger.info(f"get_next_following_price = {price}.")
                 return price
         self.logger.info(f"get_next_following_price not found...")                
         return None
@@ -110,7 +115,7 @@ class ChargeCalculator:
             next_following_price = self.get_next_following_price(aapp, price_period, next_after)
             if next_following_price != None:
                 lowest_price_period.append(price_period)
-                self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
+                #self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
                 price_period = next_following_price
             else:
                 break
