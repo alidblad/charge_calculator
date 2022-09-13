@@ -150,7 +150,7 @@ class ChargeCalculator:
             num_remove = len(lowest_price_period) - charge_period
             for i in range(1, num_remove):
                 if (i % 2) == 0:
-                   del lowest_price_period[1] 
+                   del lowest_price_period[0] 
                 else:
                    del lowest_price_period[-1] 
         return lowest_price_period

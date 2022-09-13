@@ -1,2 +1,27 @@
 calculate_charge:
   description: Calculate when to cahrge house battery
+  fields:
+    charge_period:
+      name: Charge period
+      description: How many hours to plan charge
+      required: true
+      selector:
+        select:
+          options:
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+            - "8"
+    cutoff:
+      name: Price cutoff
+      description: Cutoff on price
+      required: true
+      default: 0.5
+      selector:
+        number:
+          min: 0.1
+          max: 0.99
+          mode: box
