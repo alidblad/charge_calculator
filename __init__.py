@@ -39,6 +39,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass.states.async_set(f"{DOMAIN}.stop_time", best_time_to_charge['stop'])
         _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge}.")
 
+        hass.services.call(
+            "input_datetime",
+            "set_datetime",
+            {"data": { "timestamp": best_time_to_charge['start']}, "target": {"entity_id": "input_datetime.anton_test" }}
+        )        
+
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
 
