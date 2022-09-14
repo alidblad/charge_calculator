@@ -5,6 +5,7 @@ calculate_charge:
       name: Charge period
       description: How many hours to plan charge
       required: true
+      default: 3
       selector:
         select:
           options:
@@ -21,7 +22,14 @@ calculate_charge:
       required: true
       default: 0.5
       selector:
-        number:
-          min: 0.1
-          max: 0.99
-          mode: box
+        select:
+          options:
+            - 0.1
+            - 0.2
+            - 0.3
+            - 0.4
+            - 0.5
+            - 0.6
+            - 0.7
+            - 0.8
+            - 0.9
