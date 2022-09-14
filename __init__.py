@@ -1,11 +1,12 @@
 """Custom component Charge Calculator."""
 from __future__ import annotations
 import logging
+import datetime
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.typing import ConfigType
-from .const import DOMAIN 
-import datetime
+from .const import DOMAIN
+
 
 DOMAIN = "charge_calculator"
 _LOGGER = logging.getLogger(__name__)
@@ -129,7 +130,7 @@ class ChargeCalculator:
     def get_min_price_period(self, aapp):
         lowest_price_period = None
         for price in aapp:
-            if lowest_price_period == None or price['value'] < lowest_price_period['value']:
+            if lowest_price_period is None or price['value'] < lowest_price_period['value']:
                 lowest_price_period = price
 
         self.logger.info(f"lowest_price_period: {lowest_price_period}.")
@@ -157,7 +158,7 @@ class ChargeCalculator:
         # Get all next following price within standard_deviation
         while price_period['value'] < low_price_cutoff and price_period['value'] < self.mean:
             next_following_price = self.get_next_following_price(aapp, price_period, next_after)
-            if next_following_price != None:
+            if next_following_price is not None:
                 lowest_price_period.append(price_period)
                 #self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
                 price_period = next_following_price
@@ -181,9 +182,9 @@ class ChargeCalculator:
             num_remove = len(lowest_price_period) - charge_period
             for i in range(0, num_remove):
                 if (i % 2) == 0:
-                   del lowest_price_period[0] 
+                    del lowest_price_period[0]
                 else:
-                   del lowest_price_period[-1] 
+                    del lowest_price_period[-1] 
         return lowest_price_period
 
     def standard_deviation(self, aapp):
