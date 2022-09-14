@@ -40,8 +40,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass.states.async_set(f"{DOMAIN}.stop_time", best_time_to_charge['stop'])
         _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge}.")
 
-        ts_start = datetime.datetime.timestamp(datetime.datetime.isoformat(best_time_to_charge['start']))
-        ts_stop = datetime.datetime.timestamp(datetime.datetime.isoformat(best_time_to_charge['end']))
+        ts_start = datetime.datetime.timestamp(datetime.datetime.fromisoformat(best_time_to_charge['start']))
+        ts_stop = datetime.datetime.timestamp(datetime.datetime.fromisoformat(best_time_to_charge['end']))
         hass.services.call(
             "input_datetime",
             "set_datetime",
