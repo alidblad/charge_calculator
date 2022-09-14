@@ -60,6 +60,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             {"data": { "timestamp": ts_stop}, "target": {"entity_id": input_datetime_stop }}
         )   
 
+        input_datetime_start_state = hass.states.get(input_datetime_start)
+        input_datetime_stop_state = hass.states.get(input_datetime_stop)
+
+        _LOGGER.info(f"State of {input_datetime_start} = {input_datetime_start_state}.")
+        _LOGGER.info(f"State of {input_datetime_stop} = {input_datetime_stop_state}.")
+
+
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
 
