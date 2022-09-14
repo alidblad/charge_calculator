@@ -18,6 +18,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         _LOGGER.info(f"Received data, data={call.data}")
         _LOGGER.info(f"Nordpol entity={config[DOMAIN]['nordpol_entity']}")
         _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
+
+        input_datetime_start = config[DOMAIN]['input_datetime_start']
+        input_datetime_stop = config[DOMAIN]['input_datetime_stop']
+        _LOGGER.info(f"Start charge trigger input_datetine={input_datetime_start}")
+        _LOGGER.info(f"Stop charge trigger input_datetine={input_datetime_stop}")
+
         nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
         name = nordpol_state.name
         time_now = dt_util.utcnow()
@@ -42,22 +48,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         ts_start = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['start'])))
         ts_stop = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['end'])))
-        hass.services.call(
-            "input_datetime",
-            "set_datetime",
-            {"data": { "timestamp": ts_start}, "target": {"entity_id": "input_datetime.charge_calculater_start" }}
-        )   
-        hass.services.call(
-            "input_datetime",
-            "set_datetime",
-            {"data": { "timestamp": ts_stop}, "target": {"entity_id": "input_datetime.charge_calculater_stop" }}
-        )   
 
-#service: input_datetime.set_datetime
-#data:
-#  timestamp: 1663164464
-#target:
-#  entity_id: input_datetime.charge_calculater_start
+        hass.services.call(
+            "input_datetime",
+            "set_datetime",
+            {"data": { "timestamp": ts_start}, "target": {"entity_id": input_datetime_start }}
+        )   
+        hass.services.call(
+            "input_datetime",
+            "set_datetime",
+            {"data": { "timestamp": ts_stop}, "target": {"entity_id": input_datetime_stop }}
+        )   
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
