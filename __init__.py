@@ -50,19 +50,20 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         ts_start = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['start'])))
         ts_stop = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['stop'])))
 
-        _LOGGER.info(f"Call service input_datetime {input_datetime_start} timestamp={ts_start}.")
-        hass.services.async_call(
+        r1 = hass.services.async_call(
             "input_datetime",
             "set_datetime",
             {"data": { "timestamp": ts_start}, "target": {"entity_id": input_datetime_start }}
         )   
-        _LOGGER.info(f"Call service input_datetime {input_datetime_stop} timestamp={ts_stop}.")
-        hass.services.async_call(
+        _LOGGER.info(f"Call service input_datetime {input_datetime_start} timestamp={ts_start}: {r1}.")
+        
+        r2 = hass.services.async_call(
             "input_datetime",
             "set_datetime",
             {"data": { "timestamp": ts_stop}, "target": {"entity_id": input_datetime_stop }}
         )   
-
+        _LOGGER.info(f"Call service input_datetime {input_datetime_stop} timestamp={ts_stop}: {r2}")
+        
         input_datetime_start_state = hass.states.get(input_datetime_start)
         input_datetime_stop_state = hass.states.get(input_datetime_stop)
 
