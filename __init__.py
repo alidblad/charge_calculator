@@ -50,6 +50,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         ts_start = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['start'])))
         ts_stop = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['stop'])))
 
+        # Set component state
+        hass.states.async_set(f"{DOMAIN}.start_time", ts_start)
+        hass.states.async_set(f"{DOMAIN}.stop_time", ts_stop)
+        
         r1 = hass.services.async_call(
             "input_datetime",
             "set_datetime",
