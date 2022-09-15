@@ -63,7 +63,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             {"data": { "timestamp": ts_stop}, "target": {"entity_id": input_datetime_stop }}
         )   
         _LOGGER.info(f"Call service input_datetime {input_datetime_stop} timestamp={ts_stop}: {r2}")
-        
+
         input_datetime_start_state = hass.states.get(input_datetime_start)
         input_datetime_stop_state = hass.states.get(input_datetime_stop)
 
@@ -158,6 +158,7 @@ class ChargeCalculator:
         price_period = self.get_next_following_price(aapp, lowest_price, next_after)
         lowest_price_period = []
         low_price_cutoff = lowest_price['value'] + (self.sd * self.price_cutoff)
+        self.print_price_periods(aapp)
         # Get all next following price within standard_deviation
         while price_period['value'] < low_price_cutoff and price_period['value'] < self.mean:
             next_following_price = self.get_next_following_price(aapp, price_period, next_after)
