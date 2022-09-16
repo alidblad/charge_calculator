@@ -53,26 +53,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         # Set component state
         hass.states.async_set(f"{DOMAIN}.start_time", ts_start)
         hass.states.async_set(f"{DOMAIN}.stop_time", ts_stop)
-        
-        r1 = hass.services.async_call(
-            "input_datetime",
-            "set_datetime",
-            {"data": { "timestamp": ts_start}, "target": {"entity_id": input_datetime_start }}
-        )   
-        _LOGGER.info(f"Call service input_datetime {input_datetime_start} timestamp={ts_start}: {r1}.")
-        
-        r2 = hass.services.async_call(
-            "input_datetime",
-            "set_datetime",
-            {"data": { "timestamp": ts_stop}, "target": {"entity_id": input_datetime_stop }}
-        )   
-        _LOGGER.info(f"Call service input_datetime {input_datetime_stop} timestamp={ts_stop}: {r2}")
+        _LOGGER.info(f"Entity '{DOMAIN}.start_time' has been updated: timestamp={ts_start}.")
+        _LOGGER.info(f"Entity '{DOMAIN}.stop_time' has been updated: timestamp={ts_stop}.")
 
-        input_datetime_start_state = hass.states.get(input_datetime_start)
-        input_datetime_stop_state = hass.states.get(input_datetime_stop)
+        #r1 = hass.services.async_call(
+        #    "input_datetime",
+        #    "set_datetime",
+        #    {"data": { "timestamp": ts_start}, "target": {"entity_id": input_datetime_start }}
+        #)   
+        #_LOGGER.info(f"Call service input_datetime {input_datetime_start} timestamp={ts_start}: {r1}.")
+        
+        #r2 = hass.services.async_call(
+        #    "input_datetime",
+        #    "set_datetime",
+        #    {"data": { "timestamp": ts_stop}, "target": {"entity_id": input_datetime_stop }}
+        #)   
+        #_LOGGER.info(f"Call service input_datetime {input_datetime_stop} timestamp={ts_stop}: {r2}")
 
-        _LOGGER.info(f"State of {input_datetime_start} = {input_datetime_start_state}.")
-        _LOGGER.info(f"State of {input_datetime_stop} = {input_datetime_stop_state}.")
+        #input_datetime_start_state = hass.states.get(input_datetime_start)
+        #input_datetime_stop_state = hass.states.get(input_datetime_stop)
+
+        #_LOGGER.info(f"State of {input_datetime_start} = {input_datetime_start_state}.")
+        #_LOGGER.info(f"State of {input_datetime_stop} = {input_datetime_stop_state}.")
 
 
     # Register our service with Home Assistant.
@@ -98,13 +100,23 @@ class ChargeCalculator:
         self.logger.info(f"sd = {self.sd}.")
         self.logger.info(f"mean = {self.mean}.")
 
-    def filter_future_prices(self, prices):
+    def filter_past_prices(self, prices):
         fp = []
         for price in prices:
             if price['end'] > self.time_now:
                 fp.append(price)
             else:
                 self.logger.debug(f"filter_future_prices price is in the past: {price}.")
+        return fp
+
+    def filter_prices_after(self, prices, time=12):
+        fp = []
+        cutoff = datetime.datetime.fromisoformat(str(self.aapp[0]['start'])) + datetime.timedelta(hours=time) 
+        for price in prices:
+            if price['end'] < cutoff:
+                fp.append(price)
+            else:
+                self.logger.debug(f"filter_prices_after price is older than cutoff: {price}.")
         return fp
 
     def isfloat(self, num):
@@ -127,14 +139,20 @@ class ChargeCalculator:
     def get_all_availible_price_periods(self):
         aapp = []
         if "raw_today" in self.nordpol_attributes.keys() and self.validade_price(self.nordpol_attributes['raw_today']):
-            aapp.extend(self.filter_future_prices(self.nordpol_attributes['raw_today']))
+            aapp.extend(self.filter_past_prices(self.nordpol_attributes['raw_today']))
         if "raw_tomorrow" in self.nordpol_attributes.keys() and self.validade_price(self.nordpol_attributes['raw_tomorrow']):
-            aapp.extend(self.filter_future_prices(self.nordpol_attributes['raw_tomorrow']))
+            aapp.extend(self.filter_past_prices(self.nordpol_attributes['raw_tomorrow']))
         # Sort by end date
         aapp.sort(key=lambda x: x['end'], reverse=False)
         return aapp
 
     def get_min_price_period(self, aapp):
+        # Remove price_periods after 12 next day
+        _LOGGER.info(f"Befor: Len(aapp)={len(aapp)}.") 
+        self.print_price_periods(aapp)
+        aapp = self.filter_prices_after(aapp)
+        _LOGGER.info(f"After: Len(aapp)={len(aapp)}.")
+        self.print_price_periods(aapp)
         lowest_price_period = None
         for price in aapp:
             if lowest_price_period is None or price['value'] < lowest_price_period['value']:
