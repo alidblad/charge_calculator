@@ -180,7 +180,6 @@ class ChargeCalculator:
         price_period = self.get_next_following_price(aapp, lowest_price, next_after)
         lowest_price_period = []
         low_price_cutoff = lowest_price['value'] + (self.sd * self.price_cutoff)
-        self.print_price_periods(aapp)
         # Get all next following price within standard_deviation
         while price_period is not None and price_period['value'] < low_price_cutoff and price_period['value'] < self.mean:
             next_following_price = self.get_next_following_price(aapp, price_period, next_after)
@@ -231,6 +230,7 @@ class ChargeCalculator:
         return sum_values / num_values
 
     def print_price_periods(self, price_periods):
+        self.logger.info(f"Print_price_periods:") 
         for price_period in price_periods:
             self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}.")
 
