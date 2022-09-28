@@ -109,7 +109,7 @@ class ChargeCalculator:
                 self.logger.debug(f"filter_future_prices price is in the past: {price}.")
         return fp
 
-    def filter_prices_after(self, prices, time=12):
+    def filter_prices_after(self, prices, time=24):
         fp = []
         cutoff = datetime.datetime.fromisoformat(str(self.aapp[0]['start'])) + datetime.timedelta(hours=time) 
         for price in prices:
