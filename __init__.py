@@ -228,7 +228,7 @@ class ChargeCalculator:
                 else:
                     del lowest_price_period[-1] 
         else:
-            lowest_price_period[0:charge_period]
+            return lowest_price_period[0:charge_period]
         return lowest_price_period
 
     def standard_deviation(self, aapp):
