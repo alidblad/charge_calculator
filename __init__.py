@@ -203,8 +203,10 @@ class ChargeCalculator:
         self.logger.info(f"DEBUG get_lowest_price_period: STEP 1")
         self.print_price_periods(lowest_price_period)
 
+        step2 = False
         # Get lowest price period from lowest and backward
         if len(lowest_price_period) < charge_period:
+            step2 = True
             lowest_price_period.extend(self.get_next_following_price_periods(lowest_price, aapp, False))
             self.logger.info(f"DEBUG get_lowest_price_period: STEP 2")
             self.print_price_periods(lowest_price_period)
@@ -218,13 +220,15 @@ class ChargeCalculator:
         lowest_price_period.sort(key=lambda x: x['end'], reverse=False)
         
         # filter charge_period
-        if charge_period != 0:
+        if charge_period != 0 and step2:
             num_remove = len(lowest_price_period) - charge_period
             for i in range(0, num_remove):
                 if (i % 2) == 0:
                     del lowest_price_period[0]
                 else:
                     del lowest_price_period[-1] 
+        else:
+            lowest_price_period[0:charge_period]
         return lowest_price_period
 
     def standard_deviation(self, aapp):
