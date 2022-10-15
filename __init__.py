@@ -184,12 +184,14 @@ class ChargeCalculator:
         low_price_cutoff = lowest_price['value'] + (self.sd * self.price_cutoff)
         # Get all next following price within standard_deviation
         while price_period is not None and price_period['value'] < low_price_cutoff and price_period['value'] < self.mean:
+            self.logger.info(f"get_lowest_price_period price_period={price_period}. IS OK") 
             next_following_price = self.get_next_following_price(aapp, price_period, next_after)
             if next_following_price is not None:
                 lowest_price_period.append(price_period)
-                #self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
+                self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
                 price_period = next_following_price
             else:
+                self.logger.info("get_lowest_price_period next_following_price=None BREAK")
                 break
         return lowest_price_period
 
