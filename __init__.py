@@ -110,8 +110,12 @@ class ChargeCalculator:
         return fp
 
     def filter_prices_after(self, prices, time=24):
+        cutoff2 = datetime.datetime.combine(self.time_now.date(), datetime.timedelta(hours=12))
         fp = []
         cutoff = datetime.datetime.fromisoformat(str(self.aapp[0]['start'])) + datetime.timedelta(hours=time) 
+        self.logger.info(f"CUTOFF = {cutoff}.")
+        self.logger.info(f"CUTOFF2 = {cutoff2}.")
+
         for price in prices:
             if price['end'] < cutoff:
                 fp.append(price)
@@ -197,16 +201,19 @@ class ChargeCalculator:
         
         # Get lowest price period from lowest and forward
         lowest_price_period = self.get_next_following_price_periods(lowest_price, aapp, True)
-        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price_period={lowest_price_period}.")
+        self.logger.info(f"DEBUG get_lowest_price_period: STEP 1")
+        self.print_price_periods(lowest_price_period)
         
         # Get lowest price period from lowest and backward
         lowest_price_period.extend(self.get_next_following_price_periods(lowest_price, aapp, False))
-        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price_period={lowest_price_period}.")
+        self.logger.info(f"DEBUG get_lowest_price_period: STEP 2")
+        self.print_price_periods(lowest_price_period)
 
         # Add lowest_price
         lowest_price_period.append(lowest_price)
-        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price_period={lowest_price_period}.")
-        
+        self.logger.info(f"DEBUG get_lowest_price_period: STEP 3")
+        self.print_price_periods(lowest_price_period)
+
         # Sort 
         lowest_price_period.sort(key=lambda x: x['end'], reverse=False)
         
