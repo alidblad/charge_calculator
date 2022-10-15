@@ -158,7 +158,6 @@ class ChargeCalculator:
             if lowest_price_period is None or price['value'] < lowest_price_period['value']:
                 lowest_price_period = price
 
-        self.logger.info(f"lowest_price_period: {lowest_price_period}.")
         return lowest_price_period
 
     def get_next_following_price(self, aapp, price_period, next_after=True):
@@ -192,13 +191,22 @@ class ChargeCalculator:
         return lowest_price_period
 
     def get_lowest_price_period(self, aapp, charge_period=0):
+        # Get priceperiod where price is at minimum
         lowest_price = self.get_min_price_period(aapp)
+        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price={lowest_price}.")
+        
         # Get lowest price period from lowest and forward
         lowest_price_period = self.get_next_following_price_periods(lowest_price, aapp, True)
+        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price_period={lowest_price_period}.")
+        
         # Get lowest price period from lowest and backward
         lowest_price_period.extend(self.get_next_following_price_periods(lowest_price, aapp, False))
+        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price_period={lowest_price_period}.")
+
         # Add lowest_price
         lowest_price_period.append(lowest_price)
+        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price_period={lowest_price_period}.")
+        
         # Sort 
         lowest_price_period.sort(key=lambda x: x['end'], reverse=False)
         
