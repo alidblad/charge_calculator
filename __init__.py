@@ -109,12 +109,11 @@ class ChargeCalculator:
                 self.logger.debug(f"filter_future_prices price is in the past: {price}.")
         return fp
 
-    def filter_prices_after(self, prices, time=24):
+    def filter_prices_after(self, prices, hour=12, minute=00, second=00):
         fp = []
-        cutoff = datetime.datetime.fromisoformat(str(self.aapp[0]['start'])) + datetime.timedelta(hours=time) 
-        cutoff2 = datetime.datetime(year=self.time_now.year, month=self.time_now.month, day=self.time_now.day + 1, hour=12, minute=00, second=00)
+        # Tiem now date + 1 day + hour:minute:second
+        cutoff = datetime.datetime(year=self.time_now.year, month=self.time_now.month, day=self.time_now.day + 1, hour=hour, minute=minute, second=second)
         self.logger.info(f"CUTOFF = {cutoff}.")
-        self.logger.info(f"CUTOFF2 = {cutoff2}.")
 
         for price in prices:
             if price['end'] < cutoff:
