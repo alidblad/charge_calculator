@@ -109,7 +109,7 @@ class ChargeCalculator:
                 self.logger.debug(f"filter_future_prices price is in the past: {price}.")
         return fp
 
-    def filter_prices_after(self, prices, hour=12, minute=00, second=00):
+    def filter_prices_after(self, prices, hour=11, minute=00, second=00):
         fp = []
         # Tiem now date + 1 day + hour:minute:second
         cutoff = datetime.datetime(year=self.time_now.year, month=self.time_now.month, day=self.time_now.day + 1, hour=hour, minute=minute, second=second, tzinfo = self.time_now.tzinfo)
@@ -202,11 +202,12 @@ class ChargeCalculator:
         lowest_price_period = self.get_next_following_price_periods(lowest_price, aapp, True)
         self.logger.info(f"DEBUG get_lowest_price_period: STEP 1")
         self.print_price_periods(lowest_price_period)
-        
+
         # Get lowest price period from lowest and backward
-        lowest_price_period.extend(self.get_next_following_price_periods(lowest_price, aapp, False))
-        self.logger.info(f"DEBUG get_lowest_price_period: STEP 2")
-        self.print_price_periods(lowest_price_period)
+        if len(lowest_price_period) < charge_period:
+            lowest_price_period.extend(self.get_next_following_price_periods(lowest_price, aapp, False))
+            self.logger.info(f"DEBUG get_lowest_price_period: STEP 2")
+            self.print_price_periods(lowest_price_period)
 
         # Add lowest_price
         lowest_price_period.append(lowest_price)
