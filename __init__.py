@@ -30,17 +30,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         time_now = dt_util.utcnow()
         _LOGGER.info(f"Nordpol name={name}")
 
-        if "cutoff" in call.data:
-            cutoff = call.data['cutoff']
-        else:
-            cutoff = 0.5
-
         if "charge_period" in call.data:
             charge_period = call.data['charge_period']
         else:
             charge_period = 3
 
-        ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, cutoff, charge_period)
+        ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, charge_period)
         best_time_to_charge = ch.get_best_time_to_charge()
         _LOGGER.info(f"get_best_time_to_charge={best_time_to_charge}.")
         hass.states.async_set(f"{DOMAIN}.start_time", best_time_to_charge['start'])
@@ -84,21 +79,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 class ChargeCalculator:
-    def __init__(self, logger: logging.Logger, nordpol_state, time_now, price_cutoff, charge_period):
+    def __init__(self, logger: logging.Logger, nordpol_state, time_now, charge_period):
         self.logger = logger
         self.nordpol_state = nordpol_state
         self.nordpol_attributes = nordpol_state.attributes
         self.time_now = time_now
-        self.price_cutoff = price_cutoff
         self.charge_period = charge_period
         self.aapp = self.next_day_pp_filter(self.get_all_availible_price_periods())
-        self.sd = self.standard_deviation(self.aapp)
-        self.mean = self.calc_mean(self.aapp)
         self.logger.info(f"Time_now = {self.time_now}.")
-        self.logger.info(f"price_cutoff = {self.price_cutoff}.")
         self.logger.info(f"charge_period = {self.charge_period}.")
-        self.logger.info(f"sd = {self.sd}.")
-        self.logger.info(f"mean = {self.mean}.")
 
     def filter_past_prices(self, prices):
         fp = []
@@ -109,7 +98,7 @@ class ChargeCalculator:
                 self.logger.debug(f"filter_future_prices price is in the past: {price}.")
         return fp
 
-    def filter_prices_after(self, prices, hour=11, minute=00, second=00):
+    def next_day_pp_filter(self, prices, hour=11, minute=00, second=00):
         fp = []
         # Tiem now date + 1 day + hour:minute:second
         cutoff = datetime.datetime(year=self.time_now.year, month=self.time_now.month, day=self.time_now.day + 1, hour=hour, minute=minute, second=second, tzinfo = self.time_now.tzinfo)
@@ -149,90 +138,6 @@ class ChargeCalculator:
         aapp.sort(key=lambda x: x['end'], reverse=False)
         return aapp
 
-    def next_day_pp_filter(self, aapp):
-        # Remove price_periods after 12 next day
-        _LOGGER.info(f"Befor: Len(aapp)={len(aapp)}.") 
-        self.print_price_periods(aapp)
-        aapp = self.filter_prices_after(aapp)
-        _LOGGER.info(f"After: Len(aapp)={len(aapp)}.")
-        self.print_price_periods(aapp)
-        lowest_price_period = None
-        for price in aapp:
-            if lowest_price_period is None or price['value'] < lowest_price_period['value']:
-                lowest_price_period = price
-
-        return lowest_price_period
-
-    def get_next_following_price(self, aapp, price_period, next_after=True):
-        if next_after:
-            start = "start"
-            end = "end"
-        else:
-            start = "end"
-            end = "start"
-        #self.logger.info(f"get_next_following_price start={start}, end={end}.")
-        for price in aapp:
-            if price_period[end] == price[start]:
-                #self.logger.info(f"get_next_following_price = {price}.")
-                return price
-        self.logger.info(f"get_next_following_price not found...")                
-        return None
-
-    def get_next_following_price_periods(self, lowest_price, aapp, next_after=True):
-        price_period = self.get_next_following_price(aapp, lowest_price, next_after)
-        lowest_price_period = []
-        low_price_cutoff = lowest_price['value'] + (self.sd * self.price_cutoff)
-        # Get all next following price within standard_deviation
-        while price_period is not None and price_period['value'] < low_price_cutoff and price_period['value'] < self.mean:
-            self.logger.info(f"get_lowest_price_period price_period={price_period}. IS OK") 
-            next_following_price = self.get_next_following_price(aapp, price_period, next_after)
-            if next_following_price is not None:
-                lowest_price_period.append(price_period)
-                self.logger.info(f"get_lowest_price_period next_following_price={next_following_price}.") 
-                price_period = next_following_price
-            else:
-                self.logger.info("get_lowest_price_period next_following_price=None BREAK")
-                break
-        return lowest_price_period
-
-    def get_lowest_price_period(self, aapp, charge_period=0):
-        # Get priceperiod where price is at minimum
-        lowest_price = self.next_day_pp_filter(aapp)
-        self.logger.info(f"DEBUG get_lowest_price_period: lowest_price={lowest_price}.")
-        
-        # Get lowest price period from lowest and forward
-        lowest_price_period = self.get_next_following_price_periods(lowest_price, aapp, True)
-        self.logger.info(f"DEBUG get_lowest_price_period: STEP 1")
-        self.print_price_periods(lowest_price_period)
-
-        step2 = False
-        # Get lowest price period from lowest and backward
-        if len(lowest_price_period) < charge_period:
-            step2 = True
-            lowest_price_period.extend(self.get_next_following_price_periods(lowest_price, aapp, False))
-            self.logger.info(f"DEBUG get_lowest_price_period: STEP 2")
-            self.print_price_periods(lowest_price_period)
-
-        # Add lowest_price
-        lowest_price_period.append(lowest_price)
-        self.logger.info(f"DEBUG get_lowest_price_period: STEP 3")
-        self.print_price_periods(lowest_price_period)
-
-        # Sort 
-        lowest_price_period.sort(key=lambda x: x['end'], reverse=False)
-        
-        # filter charge_period
-        if charge_period != 0 and step2:
-            num_remove = len(lowest_price_period) - charge_period
-            for i in range(0, num_remove):
-                if (i % 2) == 0:
-                    del lowest_price_period[0]
-                else:
-                    del lowest_price_period[-1] 
-        else:
-            return lowest_price_period[0:charge_period]
-        return lowest_price_period
-
     def calc_average_charge_price(self, aapp, charge_period):
         average_charge_prices = []
         for i in range(len(aapp)):
@@ -240,43 +145,32 @@ class ChargeCalculator:
             periods = []
             if i + charge_period <= len(aapp):
                 for cp in range(charge_period):
-                    sum_price += aapp[i+cp]['value']
-                    periods.append = aapp[i+cp] 
+                    index = int(i) + int(cp)
+                    sum_price += aapp[index]['value']
+                    periods.append(aapp[index])
             else:
-                self.logger("No more average prices to caluclate.")
                 break
             average_charge_prices.append({ 'value': sum_price/charge_period, 'periods': periods })
-            self.logger("calc_average_charge_price: average_charge_prices={average_charge_prices}.")
         return average_charge_prices
 
     def get_lowest_average_charge_period(self, aapp, charge_period):
-        average_charge_price = self.calc_average_charge_price(aapp, charge_period)
+        average_charge_prices = self.calc_average_charge_price(aapp, charge_period)
         # Sort by end value
-        average_charge_price.sort(key=lambda x: x['value'], reverse=False)
-        self.logger(f"Best charge period: {average_charge_price[0]}.")
-        return average_charge_price[0]
-
-    def standard_deviation(self, aapp):
-        values = []
-        for tp in aapp:
-            values.append(tp['value'])
-
-        self.logger.info(f"standard_deviation values={values}.") 
-        #calculate population standard deviation of list 
-        return (sum((x-(sum(values) / len(values)))**2 for x in values) / len(values))**0.5
-
-    def calc_mean(self, aapp):
-        sum_values = 0
-        num_values = 0
-        for pp in aapp:
-            sum_values += pp['value']
-            num_values += 1
-        return sum_values / num_values
+        average_charge_prices.sort(key=lambda x: x['value'], reverse=False)
+        self.print_average_charge_periods(average_charge_prices)
+        
+        self.logger.info(f"Best charge period: {average_charge_prices[0]}.")
+        return average_charge_prices[0]
 
     def print_price_periods(self, price_periods):
         self.logger.info(f"Print_price_periods:") 
         for price_period in price_periods:
             self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}.")
+
+    def print_average_charge_periods(self, average_charge_periods):
+        self.logger.info(f"Print_average_charge_periods:") 
+        for period in average_charge_periods:
+            self.logger.info(f"DEBUG: Start={period['periods'][0]['start'].strftime('%Y-%m-%d %H:%M')}, End={period['periods'][-1]['end'].strftime('%Y-%m-%d %H:%M')}, Value={period['value']}.")
 
     def get_best_time_to_charge(self):
         best_charge_period = self.get_lowest_average_charge_period(self.aapp, self.charge_period)
