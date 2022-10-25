@@ -91,7 +91,7 @@ class ChargeCalculator:
         self.time_now = time_now
         self.price_cutoff = price_cutoff
         self.charge_period = charge_period
-        self.aapp = self.get_all_availible_price_periods()
+        self.aapp = self.next_day_pp_filter(self.get_all_availible_price_periods())
         self.sd = self.standard_deviation(self.aapp)
         self.mean = self.calc_mean(self.aapp)
         self.logger.info(f"Time_now = {self.time_now}.")
@@ -149,7 +149,7 @@ class ChargeCalculator:
         aapp.sort(key=lambda x: x['end'], reverse=False)
         return aapp
 
-    def get_min_price_period(self, aapp):
+    def next_day_pp_filter(self, aapp):
         # Remove price_periods after 12 next day
         _LOGGER.info(f"Befor: Len(aapp)={len(aapp)}.") 
         self.print_price_periods(aapp)
@@ -197,7 +197,7 @@ class ChargeCalculator:
 
     def get_lowest_price_period(self, aapp, charge_period=0):
         # Get priceperiod where price is at minimum
-        lowest_price = self.get_min_price_period(aapp)
+        lowest_price = self.next_day_pp_filter(aapp)
         self.logger.info(f"DEBUG get_lowest_price_period: lowest_price={lowest_price}.")
         
         # Get lowest price period from lowest and forward
@@ -233,6 +233,29 @@ class ChargeCalculator:
             return lowest_price_period[0:charge_period]
         return lowest_price_period
 
+    def calc_average_charge_price(self, aapp, charge_period):
+        average_charge_prices = []
+        for i in range(len(aapp)):
+            sum_price = 0
+            periods = []
+            if i + charge_period <= len(aapp):
+                for cp in range(charge_period):
+                    sum_price += aapp[i+cp]['value']
+                    periods.append = aapp[i+cp] 
+            else:
+                self.logger("No more average prices to caluclate.")
+                break
+            average_charge_prices.append({ 'value': sum_price/charge_period, 'periods': periods })
+            self.logger("calc_average_charge_price: average_charge_prices={average_charge_prices}.")
+        return average_charge_prices
+
+    def get_lowest_average_charge_period(self, aapp, charge_period):
+        average_charge_price = self.calc_average_charge_price(aapp, charge_period)
+        # Sort by end value
+        average_charge_price.sort(key=lambda x: x['value'], reverse=False)
+        self.logger(f"Best charge period: {average_charge_price[0]}.")
+        return average_charge_price[0]
+
     def standard_deviation(self, aapp):
         values = []
         for tp in aapp:
@@ -255,8 +278,9 @@ class ChargeCalculator:
         for price_period in price_periods:
             self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}.")
 
-    def get_best_time_to_charge(self):    
-        lowest_price_period = self.get_lowest_price_period(self.aapp, self.charge_period)        
-        self.print_price_periods(lowest_price_period)
-        self.logger.info(f"get_best_time_to_charge, {lowest_price_period[0]['start']} - {lowest_price_period[-1]['end']}")
-        return { "start": lowest_price_period[0]['start'], "stop": lowest_price_period[-1]['end'] }   
+    def get_best_time_to_charge(self):
+        best_charge_period = self.get_lowest_average_charge_period(self.aapp, self.charge_period)
+        #lowest_price_period = self.get_lowest_price_period(self.aapp, self.charge_period)        
+        self.print_price_periods(best_charge_period['periods'])
+        self.logger.info(f"get_best_time_to_charge, {best_charge_period['periods'][0]['start']} - {best_charge_period['periods'][-1]['end']}")
+        return { "start": best_charge_period['periods'][0]['start'], "stop": best_charge_period['periods'][-1]['end'] }   
