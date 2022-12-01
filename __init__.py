@@ -101,7 +101,7 @@ class ChargeCalculator:
     def next_day_pp_filter(self, prices, hour=11, minute=00, second=00):
         fp = []
         # Tiem now date + 1 day + hour:minute:second
-        cutoff = datetime.datetime(year=self.time_now.year, month=self.time_now.month, day=self.time_now.day + 1, hour=hour, minute=minute, second=second, tzinfo = self.time_now.tzinfo)
+        cutoff = self.time_now + datetime.timedelta(days=1)
         self.logger.info(f"CUTOFF = {cutoff}.")
 
         for price in prices:
