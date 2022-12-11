@@ -83,10 +83,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         car_ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, round(charge_time_car))
         best_time_to_charge_car = car_ch.get_best_time_to_charge()
         _LOGGER.info(f"get_best_time_to_charge_car={best_time_to_charge_car}.")
-        hass.states.async_set(f"{DOMAIN}.start_time", best_time_to_charge_car['start'])
-        hass.states.async_set(f"{DOMAIN}.stop_time", best_time_to_charge_car['stop'])
         _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_car}.")
-
         ts_start_car = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_car['start'])))
         ts_stop_car = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_car['stop'])))
 
@@ -99,20 +96,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         # Claculate bets time to charge house
         ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, round(charge_time_house))
-        best_time_to_charge = ch.get_best_time_to_charge()
-        _LOGGER.info(f"get_best_time_to_charge={best_time_to_charge}.")
-        hass.states.async_set(f"{DOMAIN}.start_time", best_time_to_charge['start'])
-        hass.states.async_set(f"{DOMAIN}.stop_time", best_time_to_charge['stop'])
-        _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge}.")
-
-        ts_start = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['start'])))
-        ts_stop = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge['stop'])))
+        best_time_to_charge_house = ch.get_best_time_to_charge()
+        _LOGGER.info(f"best_time_to_charge_house={best_time_to_charge_house}.")
+        _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_house}.")
+        ts_start_house = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_house['start'])))
+        ts_stop_house = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_house['stop'])))
 
         # Set component state
-        hass.states.async_set(f"{DOMAIN}.start_time", ts_start)
-        hass.states.async_set(f"{DOMAIN}.stop_time", ts_stop)
-        _LOGGER.info(f"Entity '{DOMAIN}.start_time' has been updated: timestamp={ts_start}.")
-        _LOGGER.info(f"Entity '{DOMAIN}.stop_time' has been updated: timestamp={ts_stop}.")
+        hass.states.async_set(f"{DOMAIN}.house_start_time", ts_start_house)
+        hass.states.async_set(f"{DOMAIN}.house_stop_time", ts_stop_house)
+        _LOGGER.info(f"Entity '{DOMAIN}.house_start_time' has been updated: timestamp={ts_start_house}.")
+        _LOGGER.info(f"Entity '{DOMAIN}.house_stop_time' has been updated: timestamp={ts_stop_house}.")
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
