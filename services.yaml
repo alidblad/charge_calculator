@@ -1,11 +1,48 @@
 calculate_charge:
   description: Calculate when to cahrge house battery
   fields:
-    charge_period:
-      name: Charge period
-      description: How many hours to plan charge
+    car_charge_stop:
+      name: Sluta ladda bil vid
+      description: Sluta ladda när batteriet når antal procent
       required: true
-      default: 3
+      default: 80
+      selector:
+        select:
+          options:
+            - 70
+            - 80
+            - 90
+            - 100
+    car_charge_effect:
+      name: Laaddeffect bil
+      description: Laddeffekt i kw
+      required: true
+      default: "6.9"
+      selector:
+        select:
+          options:
+            - 6.9
+            - 8.2
+            - 9.9
+            - 11
+    house_charge_stop:
+      name: Sluta ladda husbatteri vid
+      description: Sluta ladda när batteriet når antal procent
+      required: true
+      default: 95
+      selector:
+        select:
+          options:
+            - 70
+            - 80
+            - 90
+            - 95
+            - 100            
+    house_charge_effect:
+      name: Laaddeffect husbatteri
+      description: Laddeffekt i kw
+      required: true
+      default: 4
       selector:
         select:
           options:
@@ -16,3 +53,5 @@ calculate_charge:
             - 6
             - 7
             - 8
+            - 9
+            - 10            
