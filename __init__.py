@@ -68,13 +68,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         # Calculate charge time
         car_battery_size = int(config[DOMAIN]['car_battery']['size'])
-        car_battery_effect = (int(car_batterys_state.state) / 100) * int(car_battery_size)
+        car_battery_effect = (float(car_batterys_state.state) / 100) * int(car_battery_size)
         car_stop_charge_at = (car_charge_stop / 100) * int(car_battery_size)
         charge_time_car = (car_stop_charge_at - car_battery_effect) / car_charge_effect
         _LOGGER.info(f"Calculated charge time for car: {round(charge_time_car)}.")
 
         house_battery_size = int(config[DOMAIN]['house_battery']['size'])
-        house_battery_effect = (int(house_battery_state.state) / 100) * house_battery_size
+        house_battery_effect = (float(house_battery_state.state) / 100) * house_battery_size
         house_stop_charge_at = (house_charge_stop / 100) * house_battery_size
         charge_time_house = (house_stop_charge_at - house_battery_effect) / house_charge_effect
         _LOGGER.info(f"Calculated charge time for house: {charge_time_house}, {round(charge_time_house)}.")
