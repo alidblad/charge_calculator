@@ -113,7 +113,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _LOGGER.info(f"Entity '{DOMAIN}.house_start_time' has been updated: timestamp={ts_start_house}.")
             _LOGGER.info(f"Entity '{DOMAIN}.house_stop_time' has been updated: timestamp={ts_stop_house}.")
         else:
-            _LOGGER.info(f"charge_time_house_round is 0."
+            _LOGGER.info(f"charge_time_house_round is 0.")
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
