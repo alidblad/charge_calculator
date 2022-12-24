@@ -203,8 +203,11 @@ class ChargeCalculator:
         average_charge_prices.sort(key=lambda x: x['value'], reverse=False)
         self.print_average_charge_periods(average_charge_prices)
         
-        self.logger.info(f"Best charge period: {average_charge_prices[0]}.")
-        return average_charge_prices[0]
+        if len(average_charge_prices) > 0:
+            self.logger.info(f"Best charge period: {average_charge_prices[0]}.")
+            return average_charge_prices[0]
+        else:
+            return None
 
     def print_price_periods(self, price_periods):
         self.logger.info(f"Print_price_periods:") 
@@ -218,7 +221,10 @@ class ChargeCalculator:
 
     def get_best_time_to_charge(self):
         best_charge_period = self.get_lowest_average_charge_period(self.aapp, self.charge_period)
-        #lowest_price_period = self.get_lowest_price_period(self.aapp, self.charge_period)        
-        self.print_price_periods(best_charge_period['periods'])
-        self.logger.info(f"get_best_time_to_charge, {best_charge_period['periods'][0]['start']} - {best_charge_period['periods'][-1]['end']}")
-        return { "start": best_charge_period['periods'][0]['start'], "stop": best_charge_period['periods'][-1]['end'] }   
+        #lowest_price_period = self.get_lowest_price_period(self.aapp, self.charge_period)  
+        if best_charge_period != None:
+            self.print_price_periods(best_charge_period['periods'])
+            self.logger.info(f"get_best_time_to_charge, {best_charge_period['periods'][0]['start']} - {best_charge_period['periods'][-1]['end']}")
+            return { "start": best_charge_period['periods'][0]['start'], "stop": best_charge_period['periods'][-1]['end'] }   
+        else:
+            return {}
