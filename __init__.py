@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN
-
+import math
 
 DOMAIN = "charge_calculator"
 _LOGGER = logging.getLogger(__name__)
@@ -71,25 +71,25 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         car_battery_effect = (float(car_batterys_state.state) / 100) * int(car_battery_size)
         car_stop_charge_at = (car_charge_stop / 100) * int(car_battery_size)
         charge_time_car = (car_stop_charge_at - car_battery_effect) / car_charge_effect
-        charge_time_car_round = round(charge_time_car)
+        charge_time_car_round = math.ceil(charge_time_car)
         _LOGGER.info(f"Calculated charge time for car: {charge_time_car}, round = {charge_time_car_round}.")
         if float(config[DOMAIN]['car_battery']['min_charge_time']) > charge_time_car_round:
-            charge_time_car_round = float(config[DOMAIN]['car_battery']['min_charge_time'])
+            charge_time_car_round = int(config[DOMAIN]['car_battery']['min_charge_time'])
             _LOGGER.info(f"Charge time for car is less than min_charge_time, updated: {charge_time_car_round}.")
 
         house_battery_size = int(config[DOMAIN]['house_battery']['size'])
         house_battery_effect = (float(house_battery_state.state) / 100) * house_battery_size
         house_stop_charge_at = (house_charge_stop / 100) * house_battery_size
         charge_time_house = (house_stop_charge_at - house_battery_effect) / house_charge_effect
-        charge_time_house_round = round(charge_time_house)
+        charge_time_house_round = math.ceil(charge_time_house)
         _LOGGER.info(f"Calculated charge time for house: {charge_time_house}, round = {charge_time_house_round}.")
         if float(config[DOMAIN]['house_battery']['min_charge_time']) > charge_time_house_round:
-            charge_time_house_round = float(config[DOMAIN]['house_battery']['min_charge_time'])
+            charge_time_house_round = int(config[DOMAIN]['house_battery']['min_charge_time'])
             _LOGGER.info(f"Charge time for house is less than min_charge_time, updated: {charge_time_car_round}.")
 
         # Claculate bets time to charge car
         if charge_time_car_round > 0:
-            car_ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, round(charge_time_car))
+            car_ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, charge_time_car_round)
             best_time_to_charge_car = car_ch.get_best_time_to_charge()
             _LOGGER.info(f"get_best_time_to_charge_car={best_time_to_charge_car}.")
             _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_car}.")
@@ -106,7 +106,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         # Claculate bets time to charge house
         if charge_time_house_round > 0:        
-            ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, round(charge_time_house))
+            ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, charge_time_house_round)
             best_time_to_charge_house = ch.get_best_time_to_charge()
             _LOGGER.info(f"best_time_to_charge_house={best_time_to_charge_house}.")
             _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_house}.")
