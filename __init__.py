@@ -72,7 +72,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         car_stop_charge_at = (car_charge_stop / 100) * int(car_battery_size)
         charge_time_car = (car_stop_charge_at - car_battery_effect) / car_charge_effect
         charge_time_car_round = math.ceil(charge_time_car)
-        _LOGGER.info(f"Calculated charge time for car: {charge_time_car}, round = {charge_time_car_round}.")
+        _LOGGER.info(f"Calculated charge time for car (h): {charge_time_car}, round = {charge_time_car_round}.")
         if float(config[DOMAIN]['car_battery']['min_charge_time']) > charge_time_car_round:
             charge_time_car_round = int(config[DOMAIN]['car_battery']['min_charge_time'])
             _LOGGER.info(f"Charge time for car is less than min_charge_time, updated: {charge_time_car_round}.")
@@ -87,9 +87,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             charge_time_house_round = int(config[DOMAIN]['house_battery']['min_charge_time'])
             _LOGGER.info(f"Charge time for house is less than min_charge_time, updated: {charge_time_car_round}.")
 
-        # Claculate bets time to charge car
+        # Calculate bets time to charge car
         if charge_time_car_round > 0:
-            car_ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, charge_time_car_round)
+            car_ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, (charge_time_car_round * 4))
             best_time_to_charge_car = car_ch.get_best_time_to_charge()
             _LOGGER.info(f"get_best_time_to_charge_car={best_time_to_charge_car}.")
             _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_car}.")
@@ -104,9 +104,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         else:
             _LOGGER.info(f"charge_time_car_round is 0.")
 
-        # Claculate bets time to charge house
+        # Calculate bets time to charge house
         if charge_time_house_round > 0:        
-            ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, charge_time_house_round)
+            ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, (charge_time_house_round * 4))
             best_time_to_charge_house = ch.get_best_time_to_charge()
             _LOGGER.info(f"best_time_to_charge_house={best_time_to_charge_house}.")
             _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_house}.")
@@ -128,13 +128,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 class ChargeCalculator:
-    def __init__(self, logger: logging.Logger, nordpol_state, time_now, charge_period):
+    def __init__(self, logger: logging.Logger, nordpol_state, time_now, charge_periods):
         self.logger = logger
         self.nordpol_state = nordpol_state
         self.nordpol_attributes = nordpol_state.attributes
         self.time_now = time_now
-        self.charge_period = charge_period
-        self.aapp = self.next_day_pp_filter(self.get_all_availible_price_periods())
+        self.charge_period = charge_periods
+        self.aapp = self.next_day_pp_filter(self.get_all_available_price_periods())
         self.logger.info(f"Time_now = {self.time_now}.")
         self.logger.info(f"charge_period = {self.charge_period}.")
 
@@ -169,7 +169,7 @@ class ChargeCalculator:
                 return False
         return False
 
-    def validade_price(self, price_periods):
+    def validate_price(self, price_periods):
         valid_values = True
         for price in price_periods:
             if not self.isfloat(price['value']):
@@ -177,11 +177,11 @@ class ChargeCalculator:
                 break
         return valid_values
 
-    def get_all_availible_price_periods(self):
+    def get_all_available_price_periods(self):
         aapp = []
-        if "raw_today" in self.nordpol_attributes.keys() and self.validade_price(self.nordpol_attributes['raw_today']):
+        if "raw_today" in self.nordpol_attributes.keys() and self.validate_price(self.nordpol_attributes['raw_today']):
             aapp.extend(self.filter_past_prices(self.nordpol_attributes['raw_today']))
-        if "raw_tomorrow" in self.nordpol_attributes.keys() and self.validade_price(self.nordpol_attributes['raw_tomorrow']):
+        if "raw_tomorrow" in self.nordpol_attributes.keys() and self.validate_price(self.nordpol_attributes['raw_tomorrow']):
             aapp.extend(self.filter_past_prices(self.nordpol_attributes['raw_tomorrow']))
         # Sort by end date
         aapp.sort(key=lambda x: x['end'], reverse=False)
