@@ -2,235 +2,346 @@
 from __future__ import annotations
 import logging
 import datetime
+import math
+from typing import Any, Dict, List, Optional
+
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.util import dt as dt_util
 from homeassistant.helpers.typing import ConfigType
-from .const import DOMAIN
-import math
 
-DOMAIN = "charge_calculator"
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULTS = {
+    "car_charge_effect": 6.6,
+    "house_charge_effect": 4.0,
+    "car_charge_stop": 80,
+    "house_charge_stop": 90,
+}
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the an async service charge_calculator."""
+    """Set up the async service charge_calculator."""
+    cfg = config.get(DOMAIN, {})
+    if not cfg:
+        _LOGGER.warning("No configuration found for domain '%s'. Service will still be available.", DOMAIN)
+
     @callback
     def calculate_charge_time(call: ServiceCall) -> None:
         """Calculate when to charge."""
-        _LOGGER.info(f"Charge-calculater START!")
-        _LOGGER.info(f"Received data, data={call.data}")
-        _LOGGER.info(f"Nordpol entity={config[DOMAIN]['nordpol_entity']}")
-        _LOGGER.info(f"Wether entity={config[DOMAIN]['wether_entity']}")
-        _LOGGER.info(f"Car battery entity={config[DOMAIN]['car_battery']['sensor_id']}")
-        _LOGGER.info(f"House battery entity={config[DOMAIN]['house_battery']['sensor_id']}")
+        _LOGGER.info("Charge-calculator START")
+        _LOGGER.debug("Received service call data=%s", call.data)
 
-        # Get state of car sensor
-        car_batterys_state = hass.states.get(config[DOMAIN]['car_battery']['sensor_id'])
-        if car_batterys_state is None:
-            _LOGGER.error(f"Could not get state of sensor: {config[DOMAIN]['car_battery']['sensor_id']}")
+        # Safe helpers to read config with defaults
+        def cfg_get(path: List[str], default=None):
+            node = cfg
+            for p in path:
+                if not isinstance(node, dict):
+                    return default
+                node = node.get(p)
+                if node is None:
+                    return default
+            return node
 
-        # Get state of house sensor
-        house_battery_state = hass.states.get(config[DOMAIN]['house_battery']['sensor_id'])
-        if house_battery_state is None:
-            _LOGGER.error(f"Could not get state of sensor: {config[DOMAIN]['house_battery']['sensor_id']}")
+        nordpol_entity = cfg_get(['nordpol_entity'])
+        wether_entity = cfg_get(['wether_entity'])
+        car_sensor_id = cfg_get(['car_battery', 'sensor_id'])
+        house_sensor_id = cfg_get(['house_battery', 'sensor_id'])
 
-        # Get state of nordpol sensor
-        nordpol_state = hass.states.get(config[DOMAIN]['nordpol_entity'])
-        name = nordpol_state.name
+        _LOGGER.debug("Config: nordpol=%s, wether=%s, car_sensor=%s, house_sensor=%s", nordpol_entity, wether_entity, car_sensor_id, house_sensor_id)
 
-        _LOGGER.info(f"car_batterys_state={car_batterys_state}")
-        _LOGGER.info(f"house_battery_state={house_battery_state}")
-        # Get time
+        # Resolve sensor states
+        def get_state_safe(entity_id: Optional[str]):
+            if not entity_id:
+                return None
+            st = hass.states.get(entity_id)
+            if st is None:
+                _LOGGER.error("Could not get state of sensor: %s", entity_id)
+            return st
+
+        car_battery_state = get_state_safe(car_sensor_id)
+        house_battery_state = get_state_safe(house_sensor_id)
+        nordpol_state = get_state_safe(nordpol_entity)
+
+        if nordpol_state is None:
+            _LOGGER.error("Nordpol state is required, aborting calculation.")
+            return
+        if car_battery_state is None and house_battery_state is None:
+            _LOGGER.error("Neither car nor house battery state available, aborting calculation.")
+            return
+
+        _LOGGER.debug("nordpol state=%s", nordpol_state)
+
+        # Current time in UTC-aware datetime
         time_now = dt_util.utcnow()
-        _LOGGER.info(f"Nordpol name={name}")
+        _LOGGER.debug("Time now (utc)=%s", time_now)
 
-        # Get charge effect
-        if "car_charge_effect" in call.data:
-            car_charge_effect = float(call.data['car_charge_effect'])
-        else:
-            car_charge_effect = 6.6
+        # Parse optional overrides from service call, fall back to defaults
+        try:
+            car_charge_effect = float(call.data.get('car_charge_effect', DEFAULTS['car_charge_effect']))
+        except (TypeError, ValueError):
+            car_charge_effect = DEFAULTS['car_charge_effect']
+            _LOGGER.warning("Invalid car_charge_effect provided, using default %s", car_charge_effect)
 
-        if "house_charge_effect" in call.data:
-            house_charge_effect = float(call.data['house_charge_effect'])
-        else:
-            house_charge_effect = 4
+        try:
+            house_charge_effect = float(call.data.get('house_charge_effect', DEFAULTS['house_charge_effect']))
+        except (TypeError, ValueError):
+            house_charge_effect = DEFAULTS['house_charge_effect']
+            _LOGGER.warning("Invalid house_charge_effect provided, using default %s", house_charge_effect)
 
-        # Get charge stop car (default 80%)
-        if "car_charge_stop" in call.data:
-            car_charge_stop = int(call.data['car_charge_stop'])
-        else:
-            car_charge_stop = 80
+        try:
+            car_charge_stop = int(call.data.get('car_charge_stop', DEFAULTS['car_charge_stop']))
+        except (TypeError, ValueError):
+            car_charge_stop = DEFAULTS['car_charge_stop']
+            _LOGGER.warning("Invalid car_charge_stop provided, using default %s", car_charge_stop)
 
-        # Get charge stop house (default 90%)
-        if "house_charge_stop" in call.data:
-            house_charge_stop = int(call.data['house_charge_stop'])
-        else:
-            house_charge_stop = 90
+        try:
+            house_charge_stop = int(call.data.get('house_charge_stop', DEFAULTS['house_charge_stop']))
+        except (TypeError, ValueError):
+            house_charge_stop = DEFAULTS['house_charge_stop']
+            _LOGGER.warning("Invalid house_charge_stop provided, using default %s", house_charge_stop)
 
-        # Calculate charge time
-        car_battery_size = int(config[DOMAIN]['car_battery']['size'])
-        car_battery_effect = (float(car_batterys_state.state) / 100) * int(car_battery_size)
-        car_stop_charge_at = (car_charge_stop / 100) * int(car_battery_size)
-        charge_time_car = (car_stop_charge_at - car_battery_effect) / car_charge_effect
-        charge_time_car_round = math.ceil(charge_time_car)
-        _LOGGER.info(f"Calculated charge time for car (h): {charge_time_car}, round = {charge_time_car_round}.")
-        if float(config[DOMAIN]['car_battery']['min_charge_time']) > charge_time_car_round:
-            charge_time_car_round = int(config[DOMAIN]['car_battery']['min_charge_time'])
-            _LOGGER.info(f"Charge time for car is less than min_charge_time, updated: {charge_time_car_round}.")
+        def parse_percentage_state(state) -> Optional[float]:
+            """Return percentage as float (0-100) or None if not parseable."""
+            if state is None:
+                return None
+            try:
+                return float(state.state)
+            except (ValueError, TypeError):
+                _LOGGER.error("Unable to parse state '%s' for entity %s", state.state if hasattr(state, 'state') else state, getattr(state, 'entity_id', '<unknown>'))
+                return None
 
-        house_battery_size = int(config[DOMAIN]['house_battery']['size'])
-        house_battery_effect = (float(house_battery_state.state) / 100) * house_battery_size
-        house_stop_charge_at = (house_charge_stop / 100) * house_battery_size
-        charge_time_house = (house_stop_charge_at - house_battery_effect) / house_charge_effect
-        charge_time_house_round = math.ceil(charge_time_house)
-        _LOGGER.info(f"Calculated charge time for house: {charge_time_house}, round = {charge_time_house_round}.")
-        if float(config[DOMAIN]['house_battery']['min_charge_time']) > charge_time_house_round:
-            charge_time_house_round = int(config[DOMAIN]['house_battery']['min_charge_time'])
-            _LOGGER.info(f"Charge time for house is less than min_charge_time, updated: {charge_time_car_round}.")
+        car_pct = parse_percentage_state(car_battery_state)
+        house_pct = parse_percentage_state(house_battery_state)
 
-        # Calculate bets time to charge car
-        if charge_time_car_round > 0:
-            car_ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, (charge_time_car_round * 4))
-            best_time_to_charge_car = car_ch.get_best_time_to_charge()
-            _LOGGER.info(f"get_best_time_to_charge_car={best_time_to_charge_car}.")
-            _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_car}.")
-            ts_start_car = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_car['start'])))
-            ts_stop_car = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_car['stop'])))
+        # Helper to compute charge time (in hours), returns 0 when not computable
+        def compute_charge_time(current_pct: Optional[float], size_cfg_path: List[str], stop_pct: int, min_time_cfg_path: List[str], effect: float) -> int:
+            if current_pct is None:
+                return 0
+            try:
+                size = int(cfg_get(size_cfg_path, 0))
+            except (TypeError, ValueError):
+                _LOGGER.error("Invalid battery size in config for %s", size_cfg_path)
+                return 0
+            current_energy = (current_pct / 100.0) * size
+            target_energy = (stop_pct / 100.0) * size
+            hours = (target_energy - current_energy) / float(effect) if effect > 0 else 0
+            hours = max(hours, 0)
+            hours_rounded = math.ceil(hours) if hours > 0 else 0
+            min_time = int(cfg_get(min_time_cfg_path, 0) or 0)
+            if hours_rounded < min_time:
+                _LOGGER.debug("Rounded hours %s < min_time %s, using min_time", hours_rounded, min_time)
+                return min_time
+            return hours_rounded
 
-            # Set car component state
-            hass.states.async_set(f"{DOMAIN}.car_start_time", ts_start_car)
-            hass.states.async_set(f"{DOMAIN}.car_stop_time", ts_stop_car)
-            _LOGGER.info(f"Entity '{DOMAIN}.car_start_time' has been updated: timestamp={ts_start_car}.")
-            _LOGGER.info(f"Entity '{DOMAIN}.car_stop_time' has been updated: timestamp={ts_stop_car}.")
-        else:
-            _LOGGER.info(f"charge_time_car_round is 0.")
+        # Calculate times (hours) for car and house
+        car_hours = compute_charge_time(car_pct, ['car_battery', 'size'], car_charge_stop, ['car_battery', 'min_charge_time'], car_charge_effect)
+        house_hours = compute_charge_time(house_pct, ['house_battery', 'size'], house_charge_stop, ['house_battery', 'min_charge_time'], house_charge_effect)
 
-        # Calculate bets time to charge house
-        if charge_time_house_round > 0:        
-            ch = ChargeCalculator(_LOGGER, nordpol_state, time_now, (charge_time_house_round * 4))
-            best_time_to_charge_house = ch.get_best_time_to_charge()
-            _LOGGER.info(f"best_time_to_charge_house={best_time_to_charge_house}.")
-            _LOGGER.info(f"Start and stop time set to ha state: {best_time_to_charge_house}.")
-            ts_start_house = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_house['start'])))
-            ts_stop_house = datetime.datetime.timestamp(datetime.datetime.fromisoformat(str(best_time_to_charge_house['stop'])))
+        _LOGGER.info("Calculated charge hours: car=%s, house=%s", car_hours, house_hours)
 
-            # Set component state
-            hass.states.async_set(f"{DOMAIN}.house_start_time", ts_start_house)
-            hass.states.async_set(f"{DOMAIN}.house_stop_time", ts_stop_house)
-            _LOGGER.info(f"Entity '{DOMAIN}.house_start_time' has been updated: timestamp={ts_start_house}.")
-            _LOGGER.info(f"Entity '{DOMAIN}.house_stop_time' has been updated: timestamp={ts_stop_house}.")
-        else:
-            _LOGGER.info(f"charge_time_house_round is 0.")
+        # Helper to convert start/stop (may be datetime or ISO string) to timestamp
+        def to_timestamp(value) -> Optional[float]:
+            if value is None:
+                return None
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, datetime.datetime):
+                return dt_util.as_timestamp(value)
+            # try parse string
+            dt = dt_util.parse_datetime(str(value))
+            if dt is None:
+                _LOGGER.error("Unable to parse datetime '%s' to timestamp", value)
+                return None
+            return dt_util.as_timestamp(dt)
+
+        # Generic routine to calculate best time and set hass states
+        def process_battery(hours: int, label: str):
+            if hours <= 0:
+                _LOGGER.info("No charge needed for %s (hours=%s)", label, hours)
+                return
+            # existing code used *4 when constructing ChargeCalculator, keep same behaviour (periods granularity)
+            charge_periods = hours * 4
+            cc = ChargeCalculator(_LOGGER, nordpol_state, time_now, charge_periods)
+            best = cc.get_best_time_to_charge()
+            _LOGGER.debug("Best time for %s = %s", label, best)
+            if not best:
+                _LOGGER.warning("No best time found for %s", label)
+                return
+            ts_start = to_timestamp(best.get('start'))
+            ts_stop = to_timestamp(best.get('stop'))
+            if ts_start is not None:
+                hass.states.async_set(f"{DOMAIN}.{label}_start_time", ts_start)
+                _LOGGER.info("Entity '%s.%s_start_time' updated: %s", DOMAIN, label, ts_start)
+            if ts_stop is not None:
+                hass.states.async_set(f"{DOMAIN}.{label}_stop_time", ts_stop)
+                _LOGGER.info("Entity '%s.%s_stop_time' updated: %s", DOMAIN, label, ts_stop)
+
+        process_battery(car_hours, "car")
+        process_battery(house_hours, "house")
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'calculate_charge', calculate_charge_time)
 
-    # Return boolean to indicate that initialization was successfully.
     return True
 
+
 class ChargeCalculator:
-    def __init__(self, logger: logging.Logger, nordpol_state, time_now, charge_periods):
+    """Helper to find the best continuous period (by average price) to charge."""
+
+    def __init__(self, logger: logging.Logger, nordpol_state: Any, time_now: datetime.datetime, charge_periods: int):
         self.logger = logger
         self.nordpol_state = nordpol_state
-        self.nordpol_attributes = nordpol_state.attributes
+        self.nordpol_attributes = getattr(nordpol_state, "attributes", {}) or {}
         self.time_now = time_now
-        self.charge_period = charge_periods
+        self.charge_period = int(charge_periods)
+        # normalize and filter price periods up-front
         self.aapp = self.next_day_pp_filter(self.get_all_available_price_periods())
-        self.logger.info(f"Time_now = {self.time_now}.")
-        self.logger.info(f"charge_period = {self.charge_period}.")
+        self.logger.debug("Time_now = %s", self.time_now)
+        self.logger.debug("charge_period = %s", self.charge_period)
 
-    def filter_past_prices(self, prices):
-        fp = []
-        for price in prices:
-            if price['end'] > self.time_now:
-                fp.append(price)
-            else:
-                self.logger.debug(f"filter_future_prices price is in the past: {price}.")
-        return fp
-
-    def next_day_pp_filter(self, prices, hour=11, minute=00, second=00):
-        fp = []
-        # Tiem now date + 1 day + hour:minute:second
-        cutoff = self.time_now + datetime.timedelta(days=1)
-        self.logger.info(f"CUTOFF = {cutoff}.")
-
-        for price in prices:
-            if price['end'] < cutoff:
-                fp.append(price)
-            else:
-                self.logger.debug(f"filter_prices_after price is older than cutoff: {price}.")
-        return fp
-
-    def isfloat(self, num):
-        if num is not None:
+    # --- Helpers to normalize / validate price periods ---
+    def _ensure_dt(self, value) -> Optional[datetime.datetime]:
+        if isinstance(value, datetime.datetime):
+            return value
+        if isinstance(value, (int, float)):
             try:
-                float(num)
-                return True
-            except ValueError:
-                return False
-        return False
+                return datetime.datetime.fromtimestamp(float(value), tz=datetime.timezone.utc)
+            except Exception:
+                return None
+        return dt_util.parse_datetime(str(value))
 
-    def validate_price(self, price_periods):
-        valid_values = True
-        for price in price_periods:
-            if not self.isfloat(price['value']):
-                valid_values = False
-                break
-        return valid_values
-
-    def get_all_available_price_periods(self):
-        aapp = []
-        if "raw_today" in self.nordpol_attributes.keys() and self.validate_price(self.nordpol_attributes['raw_today']):
-            aapp.extend(self.filter_past_prices(self.nordpol_attributes['raw_today']))
-        if "raw_tomorrow" in self.nordpol_attributes.keys() and self.validate_price(self.nordpol_attributes['raw_tomorrow']):
-            aapp.extend(self.filter_past_prices(self.nordpol_attributes['raw_tomorrow']))
-        # Sort by end date
-        aapp.sort(key=lambda x: x['end'], reverse=False)
-        return aapp
-
-    def calc_average_charge_price(self, aapp, charge_period):
-        average_charge_prices = []
-        for i in range(len(aapp)):
-            sum_price = 0
-            periods = []
-            if i + charge_period <= len(aapp):
-                for cp in range(charge_period):
-                    index = int(i) + int(cp)
-                    sum_price += aapp[index]['value']
-                    periods.append(aapp[index])
-            else:
-                break
-            _LOGGER.info(f"sum_price/charge_period: {sum_price}/{charge_period}.")
-            average_charge_prices.append({ 'value': sum_price/charge_period, 'periods': periods })
-        return average_charge_prices
-
-    def get_lowest_average_charge_period(self, aapp, charge_period):
-        average_charge_prices = self.calc_average_charge_price(aapp, charge_period)
-        # Sort by end value
-        average_charge_prices.sort(key=lambda x: x['value'], reverse=False)
-        self.print_average_charge_periods(average_charge_prices)
-        
-        if len(average_charge_prices) > 0:
-            self.logger.info(f"Best charge period: {average_charge_prices[0]}.")
-            return average_charge_prices[0]
-        else:
+    def _normalize_period(self, period: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Ensure a period dict has datetime start/end and float value. Return None if invalid."""
+        try:
+            start = self._ensure_dt(period.get('start'))
+            end = self._ensure_dt(period.get('end'))
+            value = period.get('value')
+            if start is None or end is None:
+                self.logger.debug("Skipping period with invalid start/end: %s", period)
+                return None
+            # Try to coerce value to float
+            try:
+                value_f = float(value)
+            except (TypeError, ValueError):
+                self.logger.debug("Skipping period with invalid value: %s", period)
+                return None
+            return {'start': start, 'end': end, 'value': value_f}
+        except Exception as ex:
+            self.logger.exception("Error normalizing period %s: %s", period, ex)
             return None
 
-    def print_price_periods(self, price_periods):
-        self.logger.info(f"Print_price_periods:") 
+    def filter_past_prices(self, prices: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        fp: List[Dict[str, Any]] = []
+        for price in prices:
+            end = self._ensure_dt(price.get('end'))
+            if end and end > self.time_now:
+                fp.append(price)
+            else:
+                self.logger.debug("filter_past_prices: price is in the past or invalid: %s", price)
+        return fp
+
+    def next_day_pp_filter(self, prices: List[Dict[str, Any]], hour: int = 11, minute: int = 0, second: int = 0) -> List[Dict[str, Any]]:
+        fp: List[Dict[str, Any]] = []
+        try:
+            cutoff = (self.time_now + datetime.timedelta(days=1)).replace(hour=hour, minute=minute, second=second, microsecond=0)
+        except Exception:
+            cutoff = self.time_now + datetime.timedelta(days=1)
+        self.logger.debug("CUTOFF = %s", cutoff)
+
+        for price in prices:
+            if price.get('end') and price['end'] < cutoff:
+                fp.append(price)
+            else:
+                self.logger.debug("next_day_pp_filter: price is after cutoff or invalid: %s", price)
+        return fp
+
+    def isfloat(self, num) -> bool:
+        try:
+            if num is None:
+                return False
+            float(num)
+            return True
+        except (ValueError, TypeError):
+            return False
+
+    def validate_price(self, price_periods: List[Dict[str, Any]]) -> bool:
+        for price in price_periods:
+            if not self.isfloat(price.get('value')):
+                return False
+        return True
+
+    def get_all_available_price_periods(self) -> List[Dict[str, Any]]:
+        raw_today = self.nordpol_attributes.get('raw_today', []) or []
+        raw_tomorrow = self.nordpol_attributes.get('raw_tomorrow', []) or []
+        combined: List[Dict[str, Any]] = []
+
+        for raw in (raw_today, raw_tomorrow):
+            # normalize each period and validate
+            for p in raw:
+                norm = self._normalize_period(p)
+                if norm:
+                    combined.append(norm)
+
+        # filter out past periods
+        combined = self.filter_past_prices(combined)
+        # Sort by end date ascending
+        combined.sort(key=lambda x: x['end'])
+        return combined
+
+    def calc_average_charge_price(self, aapp: List[Dict[str, Any]], charge_period: int) -> List[Dict[str, Any]]:
+        average_charge_prices: List[Dict[str, Any]] = []
+        if charge_period <= 0:
+            return average_charge_prices
+        for i in range(len(aapp)):
+            if i + charge_period > len(aapp):
+                break
+            sum_price = 0.0
+            periods = []
+            for cp in range(charge_period):
+                idx = i + cp
+                sum_price += aapp[idx]['value']
+                periods.append(aapp[idx])
+            avg = sum_price / charge_period
+            self.logger.debug("sum_price/charge_period: %s/%s -> avg=%s", sum_price, charge_period, avg)
+            average_charge_prices.append({'value': avg, 'periods': periods})
+        return average_charge_prices
+
+    def get_lowest_average_charge_period(self, aapp: List[Dict[str, Any]], charge_period: int) -> Optional[Dict[str, Any]]:
+        average_charge_prices = self.calc_average_charge_price(aapp, charge_period)
+        average_charge_prices.sort(key=lambda x: x['value'])
+        self.print_average_charge_periods(average_charge_prices)
+        if average_charge_prices:
+            self.logger.info("Best charge period: %s", average_charge_prices[0])
+            return average_charge_prices[0]
+        return None
+
+    def print_price_periods(self, price_periods: List[Dict[str, Any]]):
+        self.logger.info("Print_price_periods:")
         for price_period in price_periods:
-            self.logger.info(f"DEBUG: Start={price_period['start'].strftime('%Y-%m-%d %H:%M')}, End={price_period['end'].strftime('%Y-%m-%d %H:%M')}, Value={price_period['value']}.")
+            try:
+                self.logger.info("Start=%s, End=%s, Value=%s",
+                                 price_period['start'].strftime('%Y-%m-%d %H:%M'),
+                                 price_period['end'].strftime('%Y-%m-%d %H:%M'),
+                                 price_period['value'])
+            except Exception:
+                self.logger.debug("Unable to pretty-print price period: %s", price_period)
 
-    def print_average_charge_periods(self, average_charge_periods):
-        self.logger.info(f"Print_average_charge_periods:") 
+    def print_average_charge_periods(self, average_charge_periods: List[Dict[str, Any]]):
+        self.logger.debug("Print_average_charge_periods:")
         for period in average_charge_periods:
-            self.logger.info(f"DEBUG: Start={period['periods'][0]['start'].strftime('%Y-%m-%d %H:%M')}, End={period['periods'][-1]['end'].strftime('%Y-%m-%d %H:%M')}, Value={period['value']}.")
+            try:
+                self.logger.debug("Start=%s, End=%s, Value=%s",
+                                  period['periods'][0]['start'].strftime('%Y-%m-%d %H:%M'),
+                                  period['periods'][-1]['end'].strftime('%Y-%m-%d %H:%M'),
+                                  period['value'])
+            except Exception:
+                self.logger.debug("Unable to pretty-print average period: %s", period)
 
-    def get_best_time_to_charge(self):
+    def get_best_time_to_charge(self) -> Dict[str, Any]:
         best_charge_period = self.get_lowest_average_charge_period(self.aapp, self.charge_period)
-        #lowest_price_period = self.get_lowest_price_period(self.aapp, self.charge_period)  
-        if best_charge_period != None:
+        if best_charge_period:
             self.print_price_periods(best_charge_period['periods'])
-            self.logger.info(f"get_best_time_to_charge, {best_charge_period['periods'][0]['start']} - {best_charge_period['periods'][-1]['end']}")
-            return { "start": best_charge_period['periods'][0]['start'], "stop": best_charge_period['periods'][-1]['end'] }   
-        else:
-            return {}
+            self.logger.info("get_best_time_to_charge: %s - %s", best_charge_period['periods'][0]['start'], best_charge_period['periods'][-1]['end'])
+            return {"start": best_charge_period['periods'][0]['start'], "stop": best_charge_period['periods'][-1]['end']}
+        return {}
