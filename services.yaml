@@ -1,6 +1,13 @@
 calculate_charge:
   description: Calculate when to cahrge house battery
   fields:
+    execute_actions:
+      name: Execute configured charge actions
+      description: Trigger configured charger services if the calculated window should start now
+      required: false
+      default: false
+      selector:
+        boolean:
     car_charge_stop:
       name: Sluta ladda bil vid
       description: Sluta ladda när batteriet når antal procent
@@ -25,6 +32,17 @@ calculate_charge:
             - 8.2
             - 9.9
             - 11
+    car_max_sessions:
+      name: Max antal laddpass bil
+      description: Dela upp laddning i flera billigare pass per dag
+      required: false
+      default: 1
+      selector:
+        select:
+          options:
+            - 1
+            - 2
+            - 3
     house_charge_stop:
       name: Sluta ladda husbatteri vid
       description: Sluta ladda när batteriet når antal procent
@@ -54,4 +72,15 @@ calculate_charge:
             - 7
             - 8
             - 9
-            - 10            
+            - 10
+    house_max_sessions:
+      name: Max antal laddpass husbatteri
+      description: Dela upp laddning i flera billigare pass per dag
+      required: false
+      default: 1
+      selector:
+        select:
+          options:
+            - 1
+            - 2
+            - 3
