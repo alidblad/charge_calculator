@@ -1,9 +1,9 @@
 calculate_charge:
-  description: Calculate when to cahrge house battery
+  description: Calculate the cheapest charging windows for the car and house battery
   fields:
     execute_actions:
       name: Execute configured charge actions
-      description: Trigger configured charger services if the calculated window should start now
+      description: Start/stop the configured charger services when a calculated window is active
       required: false
       default: false
       selector:
@@ -11,7 +11,7 @@ calculate_charge:
     car_charge_stop:
       name: Sluta ladda bil vid
       description: Sluta ladda när batteriet når antal procent
-      required: true
+      required: false
       default: 80
       selector:
         select:
@@ -21,9 +21,9 @@ calculate_charge:
             - 90
             - 100
     car_charge_effect:
-      name: Laaddeffect bil
-      description: Laddeffekt i kw
-      required: true
+      name: Laddeffekt bil
+      description: Laddeffekt i kW
+      required: false
       default: "6.9"
       selector:
         select:
@@ -34,7 +34,7 @@ calculate_charge:
             - 11
     car_max_sessions:
       name: Max antal laddpass bil
-      description: Dela upp laddning i flera billigare pass per dag
+      description: Högsta antal laddpass per dygn, används bara om det faktiskt finns flera billiga perioder
       required: false
       default: 1
       selector:
@@ -46,7 +46,7 @@ calculate_charge:
     house_charge_stop:
       name: Sluta ladda husbatteri vid
       description: Sluta ladda när batteriet når antal procent
-      required: true
+      required: false
       default: 95
       selector:
         select:
@@ -55,11 +55,11 @@ calculate_charge:
             - 80
             - 90
             - 95
-            - 100            
+            - 100
     house_charge_effect:
-      name: Laaddeffect husbatteri
-      description: Laddeffekt i kw
-      required: true
+      name: Laddeffekt husbatteri
+      description: Laddeffekt i kW
+      required: false
       default: 4
       selector:
         select:
@@ -75,7 +75,7 @@ calculate_charge:
             - 10
     house_max_sessions:
       name: Max antal laddpass husbatteri
-      description: Dela upp laddning i flera billigare pass per dag
+      description: Högsta antal laddpass per dygn, används bara om det faktiskt finns flera billiga perioder
       required: false
       default: 1
       selector:
