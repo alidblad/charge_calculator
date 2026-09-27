@@ -1,86 +1,87 @@
 calculate_charge:
-  description: Calculate the cheapest charging windows for the car and house battery
+  name: Beräkna laddning
+  description: >-
+    Beräknar de billigaste laddfönstren för bil och husbatteri. Utan
+    execute_actions returneras bara planen utan att något startas.
   fields:
     execute_actions:
-      name: Execute configured charge actions
-      description: Start/stop the configured charger services when a calculated window is active
+      name: Utför laddåtgärder
+      description: Starta och stoppa de konfigurerade tjänsterna när ett fönster är aktivt
       required: false
       default: false
       selector:
         boolean:
     car_charge_stop:
       name: Sluta ladda bil vid
-      description: Sluta ladda när batteriet når antal procent
+      description: Sluta ladda när bilbatteriet når antal procent
       required: false
-      default: 80
+      example: 80
       selector:
-        select:
-          options:
-            - 70
-            - 80
-            - 90
-            - 100
+        number:
+          min: 50
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+          mode: slider
     car_charge_effect:
       name: Laddeffekt bil
       description: Laddeffekt i kW
       required: false
-      default: "6.9"
+      example: 6.9
       selector:
-        select:
-          options:
-            - 6.9
-            - 8.2
-            - 9.9
-            - 11
+        number:
+          min: 1
+          max: 22
+          step: 0.1
+          unit_of_measurement: kW
+          mode: box
     car_max_sessions:
       name: Max antal laddpass bil
-      description: Högsta antal laddpass per dygn, används bara om det faktiskt finns flera billiga perioder
+      description: >-
+        Högsta antal laddpass, används bara om det faktiskt finns flera
+        billiga perioder
       required: false
-      default: 1
+      example: 2
       selector:
-        select:
-          options:
-            - 1
-            - 2
-            - 3
+        number:
+          min: 1
+          max: 4
+          step: 1
+          mode: slider
     house_charge_stop:
       name: Sluta ladda husbatteri vid
-      description: Sluta ladda när batteriet når antal procent
+      description: Sluta ladda när husbatteriet når antal procent
       required: false
-      default: 95
+      example: 95
       selector:
-        select:
-          options:
-            - 70
-            - 80
-            - 90
-            - 95
-            - 100
+        number:
+          min: 50
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+          mode: slider
     house_charge_effect:
       name: Laddeffekt husbatteri
       description: Laddeffekt i kW
       required: false
-      default: 4
+      example: 4
       selector:
-        select:
-          options:
-            - 2
-            - 3
-            - 4
-            - 5
-            - 6
-            - 7
-            - 8
-            - 9
-            - 10
+        number:
+          min: 1
+          max: 15
+          step: 0.5
+          unit_of_measurement: kW
+          mode: box
     house_max_sessions:
       name: Max antal laddpass husbatteri
-      description: Högsta antal laddpass per dygn, används bara om det faktiskt finns flera billiga perioder
+      description: >-
+        Högsta antal laddpass, används bara om det faktiskt finns flera
+        billiga perioder
       required: false
-      default: 1
+      example: 2
       selector:
-        select:
-          options:
-            - 1
-            - 2
-            - 3
+        number:
+          min: 1
+          max: 4
+          step: 1
+          mode: slider
