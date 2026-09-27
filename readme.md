@@ -170,6 +170,24 @@ attributes feed straight into an ApexCharts card.
 The drain sensor starts out empty and becomes useful after a day or two of learning. Until it
 has data the house battery simply plans without a deadline.
 
+### Legacy states
+
+These are still published for automations written against older versions, and are set to
+`unknown` whenever nothing is scheduled:
+
+- `charge_calculator.car_start_time` / `charge_calculator.car_stop_time`
+- `charge_calculator.house_start_time` / `charge_calculator.house_stop_time`
+
+Always give templates reading them a default, because `unknown` is a normal value here:
+
+```jinja
+{{ states('charge_calculator.car_stop_time') | float(0) }}
+```
+
+Prefer `sensor.charge_calculator_car_next_stop` in new automations — it is a proper timestamp
+entity. If you configure `car_charge_action` / `car_charge_stop_action`, the integration starts
+and stops charging itself and any automation doing that becomes redundant.
+
 ## Logging
 
 ```yaml

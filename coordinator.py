@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import STATE_UNKNOWN
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -16,6 +17,7 @@ from .const import (
     DOMAIN,
     HOUSE,
     HOUSE_DISCHARGE,
+    LABELS,
     SIGNAL_PLAN_UPDATED,
     STATUS_CHARGING,
     STATUS_DISCHARGING,
@@ -138,7 +140,22 @@ class ChargeCoordinator:
             **details,
         }
         self.plans[task] = plan
+        self._write_legacy_states(task, plan)
         async_dispatcher_send(self.hass, SIGNAL_PLAN_UPDATED, task)
+
+    @callback
+    def _write_legacy_states(self, task: str, plan: Dict[str, Any]) -> None:
+        """Kept so automations written against the pre-0.4 helper states keep working."""
+        if task not in LABELS:
+            return
+        sessions = plan.get("sessions") or []
+        start_ts = to_timestamp(sessions[0]["start"]) if sessions else None
+        stop_ts = to_timestamp(sessions[0]["stop"]) if sessions else None
+        for suffix, value in (("start_time", start_ts), ("stop_time", stop_ts)):
+            self.hass.states.async_set(
+                f"{DOMAIN}.{task}_{suffix}",
+                value if value is not None else STATE_UNKNOWN,
+            )
 
     def _describe(self, sessions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return [
