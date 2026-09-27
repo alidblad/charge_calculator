@@ -22,6 +22,18 @@ deadline-constrained cost minimisation, the house battery is arbitrage.
 
 ## Configuration
 
+Create an `input_text` helper named **Car charge ready by** in Settings > Devices & services >
+Helpers (entity ID `input_text.car_charge_ready_by`). Enter a local time such as `07:00` to
+set a deadline, or leave it empty to charge in the cheapest available window. The helper can
+also be defined in `configuration.yaml`:
+
+```yaml
+input_text:
+	car_charge_ready_by:
+		name: Car charge ready by
+		max: 5
+```
+
 ```yaml
 charge_calculator:
 	interval_minutes: 5
@@ -50,7 +62,7 @@ charge_calculator:
 		size: 77
 		max_sessions: 2
 		min_session_minutes: 60
-		ready_by: "07:00"
+		ready_by_entity: input_text.car_charge_ready_by
 		plugged_in_entity: binary_sensor.car_cable_connected
 
 	house_charge_action:
@@ -95,7 +107,8 @@ charge_calculator:
 | `min_session_minutes` | `60` | both | Shortest allowed single window |
 | `min_saving_ratio` | `0.03` | both | Extra windows only used if they cut cost by this fraction |
 | `enable_entity` | – | both | Optional external toggle; scheduling is off while it is off |
-| `ready_by` | – | car | Local time the car must be charged by |
+| `ready_by` | – | car | Optional fixed local deadline, e.g. `"07:00"` |
+| `ready_by_entity` | – | car | Optional `input_text` helper for a GUI-editable deadline; overrides `ready_by` |
 | `plugged_in_entity` | – | car | Charging is blocked unless this is on |
 | `reserve_pct` | `10` | house | Floor the battery is never planned below || `break_even` | `false` | house | Skip charging that cannot pay for itself |
 | `round_trip_efficiency` | `0.9` | house | Charge/discharge efficiency |
@@ -123,7 +136,10 @@ Windows are always contiguous in time.
 
 **Car.** Charging is blocked unless `plugged_in_entity` is on. Windows are restricted to
 periods that finish before `ready_by`; if the car cannot reach its target in time the deadline
-is relaxed and logged rather than silently under-charging.
+is relaxed and logged rather than silently under-charging. With `ready_by_entity`, enter a
+local time (`HH:MM`) in the helper to set the deadline; clearing it removes the deadline and
+replans immediately. With neither deadline option set, the cheapest window in the available
+price horizon is chosen. An active charging session remains pinned until its planned stop.
 
 **House.** The drain profile gives an estimated time until the battery hits `reserve_pct`, and
 that becomes the deadline. Expected PV surplus (production minus predicted house load) is
@@ -179,22 +195,8 @@ attributes feed straight into an ApexCharts card.
 The drain sensor starts out empty and becomes useful after a day or two of learning. Until it
 has data the house battery simply plans without a deadline.
 
-### Legacy states
-
-These are still published for automations written against older versions, and are set to
-`unknown` whenever nothing is scheduled:
-
-- `charge_calculator.car_start_time` / `charge_calculator.car_stop_time`
-- `charge_calculator.house_start_time` / `charge_calculator.house_stop_time`
-
-Always give templates reading them a default, because `unknown` is a normal value here:
-
-```jinja
-{{ states('charge_calculator.car_stop_time') | float(0) }}
-```
-
-Prefer `sensor.charge_calculator_car_next_stop` in new automations — it is a proper timestamp
-entity. If you configure `car_charge_action` / `car_charge_stop_action`, the integration starts
+Use `sensor.charge_calculator_car_next_stop` in automations; it is a proper timestamp entity.
+If you configure `car_charge_action` / `car_charge_stop_action`, the integration starts
 and stops charging itself and any automation doing that becomes redundant.
 
 ## Logging

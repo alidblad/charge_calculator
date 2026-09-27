@@ -13,7 +13,6 @@ CAR = "car"
 HOUSE = "house"
 HOUSE_DISCHARGE = "house_discharge"
 
-LABELS = (CAR, HOUSE)
 TASKS = (CAR, HOUSE, HOUSE_DISCHARGE)
 LABEL_NAMES = {
     CAR: "car",

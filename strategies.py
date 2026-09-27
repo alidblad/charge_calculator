@@ -127,7 +127,12 @@ class CarStrategy(BaseStrategy):
             )
 
         deadline = None
-        ready_by = parse_time_of_day(self.option("ready_by"))
+        ready_by_entity = self.option("ready_by_entity")
+        if ready_by_entity:
+            state = self.ctx.hass.states.get(ready_by_entity)
+            ready_by = parse_time_of_day(state.state) if state else None
+        else:
+            ready_by = parse_time_of_day(self.option("ready_by"))
         if ready_by is not None:
             deadline = next_occurrence(ready_by, self.now)
             details["ready_by"] = local_hm(deadline)

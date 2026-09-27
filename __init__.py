@@ -98,6 +98,20 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             hass, [nordpol_entity], on_price_update
         )
 
+    ready_by_entity = (cfg.get("car_battery") or {}).get("ready_by_entity")
+    if ready_by_entity:
+        @callback
+        def on_ready_by_update(event) -> None:
+            old_state = event.data.get("old_state")
+            new_state = event.data.get("new_state")
+            if old_state and new_state and old_state.state == new_state.state:
+                return
+            hass.async_create_task(coordinator.async_run(execute=True))
+
+        runtime["ready_by_unsubscribe"] = async_track_state_change_event(
+            hass, [ready_by_entity], on_ready_by_update
+        )
+
     coordinator.drain.async_start()
 
     for platform in PLATFORMS:
