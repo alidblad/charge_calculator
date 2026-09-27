@@ -94,18 +94,26 @@ charge_calculator:
 | `max_sessions` | `1` | both | Upper limit on windows per plan |
 | `min_session_minutes` | `60` | both | Shortest allowed single window |
 | `min_saving_ratio` | `0.03` | both | Extra windows only used if they cut cost by this fraction |
+| `enable_entity` | – | both | Optional external toggle; scheduling is off while it is off |
 | `ready_by` | – | car | Local time the car must be charged by |
 | `plugged_in_entity` | – | car | Charging is blocked unless this is on |
-| `reserve_pct` | `10` | house | Floor the battery is never planned below |
-| `break_even` | `false` | house | Skip charging that cannot pay for itself |
+| `reserve_pct` | `10` | house | Floor the battery is never planned below || `break_even` | `false` | house | Skip charging that cannot pay for itself |
 | `round_trip_efficiency` | `0.9` | house | Charge/discharge efficiency |
 | `cycle_cost` | `0.0` | house | Wear cost per kWh |
 | `load_entity` | – | house | House load sensor; more accurate than learning from SoC |
 | `discharge` | `false` | house | Enable discharge scheduling |
+| `discharge_enable_entity` | – | house | Optional external toggle for discharge |
 | `discharge_effect` | `4.0` | house | Discharge power in kW |
 | `min_discharge_spread` | `0.20` | house | Required margin over the charge price |
 
 ## How it decides
+
+**Enabling and disabling.** Each battery has a `switch.charge_calculator_..._scheduling`
+entity, on by default and remembered across restarts. Turning one off stops any session that
+is currently running (the configured stop action is sent immediately) and skips planning until
+it is turned back on. The plan status becomes `disabled`. If you would rather drive this from
+an existing `input_boolean`, point `enable_entity` at it; both must be on for scheduling to
+run.
 
 **Windows.** Charge need is converted to whole price periods (15 min when Nordpool reports
 quarters), so no time is bought unnecessarily. The planner compares one continuous window
@@ -162,6 +170,7 @@ Placeholders available in every `data` block:
 | `sensor.charge_calculator_house_battery_runway` | Hours until the reserve | `empty_at`, `reserve_pct` |
 | `sensor.charge_calculator_solar_forecast_today` | Expected kWh left today | `tomorrow_kwh`, `cloud_now` |
 | `binary_sensor.charge_calculator_..._active` | `on` while a session runs | `start`, `stop`, `minutes_remaining` |
+| `switch.charge_calculator_{car,house_battery,house_battery_discharge}_scheduling` | `on` when scheduling is allowed | `external_enable_entity`, `effectively_enabled` |
 
 The `plan` sensors always carry a `reason`, so when nothing is scheduled you can see why.
 `sensor.charge_calculator_current_price` is meant for charting: its `prices` and `windows`

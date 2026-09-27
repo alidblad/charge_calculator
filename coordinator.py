@@ -20,6 +20,7 @@ from .const import (
     LABELS,
     SIGNAL_PLAN_UPDATED,
     STATUS_CHARGING,
+    STATUS_DISABLED,
     STATUS_DISCHARGING,
     STATUS_SCHEDULED,
     STATUS_UNAVAILABLE,
@@ -45,6 +46,13 @@ _LOGGER = logging.getLogger(__name__)
 
 ACTIVE_STATUS = {HOUSE_DISCHARGE: STATUS_DISCHARGING}
 
+LEGACY_SESSION_KEYS = {
+    "label": "task",
+    "charge_hours": "hours",
+    "charge_power_kw": "power_kw",
+    "stop_pct": "target_pct",
+}
+
 
 class ChargeCoordinator:
     """Single place that knows the current plan for every task."""
@@ -54,6 +62,7 @@ class ChargeCoordinator:
         self.cfg = cfg or {}
         self.store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.sessions: Dict[str, Dict[str, Any]] = {}
+        self.enabled: Dict[str, bool] = {task: True for task in TASKS}
         self.plans: Dict[str, Dict[str, Any]] = {}
         self.prices: List[Dict[str, Any]] = []
         self.price_stats: Dict[str, Any] = {}
@@ -86,11 +95,52 @@ class ChargeCoordinator:
 
     async def async_load(self) -> None:
         stored = await self.store.async_load() or {}
-        self.sessions = stored.get("sessions", {}) or {}
+        self.sessions = self._migrate_sessions(stored.get("sessions", {}) or {})
+        stored_enabled = stored.get("enabled") or {}
+        for task in TASKS:
+            self.enabled[task] = bool(stored_enabled.get(task, True))
         await self.drain.async_load()
 
+    def _migrate_sessions(self, stored: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """Sessions saved before 0.4 used the old key names."""
+        migrated: Dict[str, Dict[str, Any]] = {}
+        for task, session in stored.items():
+            if not isinstance(session, dict):
+                continue
+            converted = dict(session)
+            for old, new in LEGACY_SESSION_KEYS.items():
+                if old in converted and new not in converted:
+                    converted[new] = converted.pop(old)
+            converted["task"] = task
+            converted.setdefault("session_index", 1)
+            converted.setdefault("hours", 0)
+            if converted.get("start_ts") is None or converted.get("stop_ts") is None:
+                _LOGGER.warning("Discarding unusable stored session for %s", task)
+                continue
+            migrated[task] = converted
+        return migrated
+
     async def async_save_sessions(self) -> None:
-        await self.store.async_save({"sessions": self.sessions})
+        await self.store.async_save({"sessions": self.sessions, "enabled": self.enabled})
+
+    def enable_entity(self, task: str) -> Optional[str]:
+        if task == HOUSE_DISCHARGE:
+            return self.option("house_battery", "discharge_enable_entity")
+        return self.option(f"{task}_battery", "enable_entity")
+
+    def is_enabled(self, task: str) -> bool:
+        if not self.enabled.get(task, True):
+            return False
+        entity = self.enable_entity(task)
+        return self.state_is_on(entity) if entity else True
+
+    async def async_set_enabled(self, task: str, value: bool) -> None:
+        if self.enabled.get(task) == value:
+            return
+        self.enabled[task] = value
+        _LOGGER.info("%s scheduling turned %s", task, "on" if value else "off")
+        await self.async_save_sessions()
+        await self.async_run(execute=True)
 
     # --- planning context API used by strategies ---------------------------
 
@@ -230,6 +280,16 @@ class ChargeCoordinator:
         )
         return True
 
+    async def _force_stop(self, task: str, reason: str) -> None:
+        active = self.sessions.get(task)
+        if not active:
+            return
+        active["task"] = task
+        _LOGGER.info("%s: %s, stopping the running session early", task, reason)
+        await self.call_action(active, "stop")
+        self.sessions.pop(task, None)
+        await self.async_save_sessions()
+
     async def _reconcile(self, task: str, now_ts: float) -> Optional[Dict[str, Any]]:
         active = self.sessions.get(task)
         if not active:
@@ -252,6 +312,7 @@ class ChargeCoordinator:
             await self.async_save_sessions()
             return None
 
+        active["task"] = task
         return active
 
     async def _start_if_due(self, sessions: List[Dict[str, Any]], now_ts: float) -> Optional[Dict[str, Any]]:
@@ -307,6 +368,18 @@ class ChargeCoordinator:
         for strategy_cls in (CarStrategy, HouseStrategy, HouseDischargeStrategy):
             strategy = strategy_cls(self)
             task = strategy.task
+
+            if not self.is_enabled(task):
+                await self._force_stop(task, "scheduling is turned off")
+                entity = self.enable_entity(task)
+                reason = (
+                    f"Turned off by {entity}"
+                    if entity and not self.state_is_on(entity)
+                    else "Turned off"
+                )
+                _LOGGER.info("%s: %s", task, reason)
+                self.publish(task, STATUS_DISABLED, reason)
+                continue
 
             active = await self._reconcile(task, now_ts) if execute else None
             if active is not None:

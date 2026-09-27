@@ -29,6 +29,7 @@ STATUS_NO_WINDOW = "no_window"
 STATUS_NOT_PROFITABLE = "not_profitable"
 STATUS_UNAVAILABLE = "unavailable"
 STATUS_BLOCKED = "blocked"
+STATUS_DISABLED = "disabled"
 
 DAY_TYPES = ("weekday", "weekend")
 

@@ -29,7 +29,7 @@ OVERRIDE_KEYS = (
     "house_max_sessions",
 )
 
-PLATFORMS = ("sensor", "binary_sensor")
+PLATFORMS = ("switch", "sensor", "binary_sensor")
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:

@@ -55,6 +55,8 @@ class SolarForecast:
         self.cloud_impact = min(max(cloud_impact, 0.0), 1.0)
         self._forecast: List[Dict[str, Any]] = []
         self._available = False
+        self._observer: Any = None
+        self._observer_resolved = False
 
     @property
     def available(self) -> bool:
@@ -109,13 +111,40 @@ class SolarForecast:
                 break
         return chosen
 
+    def _astral_observer(self):
+        """Resolved once; the lookup is deprecated and was noisy when called per step."""
+        if self._observer_resolved:
+            return self._observer
+
+        self._observer_resolved = True
+        try:
+            from homeassistant.helpers.sun import get_astral_observer
+
+            self._observer = get_astral_observer(self.hass)
+        except ImportError:
+            try:
+                from homeassistant.helpers.sun import get_astral_location
+
+                location, _elevation = get_astral_location(self.hass)
+                self._observer = location.observer
+            except Exception:  # noqa: BLE001
+                self._observer = None
+        except Exception:  # noqa: BLE001
+            self._observer = None
+
+        if self._observer is None:
+            _LOGGER.debug("No astral observer available, using the daylight approximation")
+        return self._observer
+
     def _elevation_factor(self, moment: datetime.datetime) -> float:
         """sin(solar elevation), clamped at zero, as a stand-in for clear-sky irradiance."""
+        observer = self._astral_observer()
+        if observer is None:
+            return self._daylight_fallback(moment)
         try:
-            from homeassistant.helpers.sun import get_astral_location
+            from astral.sun import elevation
 
-            location, elevation = get_astral_location(self.hass)
-            angle = location.solar_elevation(moment, elevation)
+            angle = elevation(observer, moment)
         except Exception:  # noqa: BLE001 - astral is optional at runtime
             return self._daylight_fallback(moment)
         return max(math.sin(math.radians(angle)), 0.0)
