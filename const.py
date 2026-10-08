@@ -55,6 +55,7 @@ HOUSE_DEFAULTS = {
     "charge_stop": 90,
     "max_sessions": 1,
     "reserve_pct": 10,
+    "max_drain_kw": 50.0,
     "discharge_effect": 4.0,
     "min_discharge_spread": 0.20,
 }

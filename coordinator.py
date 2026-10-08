@@ -16,6 +16,7 @@ from .const import (
     DOMAIN,
     HOUSE,
     HOUSE_DISCHARGE,
+    HOUSE_DEFAULTS,
     SIGNAL_PLAN_UPDATED,
     STATUS_CHARGING,
     STATUS_DISABLED,
@@ -71,6 +72,9 @@ class ChargeCoordinator:
             soc_entity=house.get("sensor_id"),
             battery_size=as_float(house.get("size"), 0.0) or 0.0,
             load_entity=house.get("load_entity"),
+            max_drain_kw=as_float(
+                house.get("max_drain_kw"), HOUSE_DEFAULTS["max_drain_kw"]
+            ),
             alpha=as_float(house.get("drain_alpha"), DEFAULTS["drain_alpha"]),
             min_samples=int(as_float(house.get("drain_min_samples"), DEFAULTS["drain_min_samples"])),
         )

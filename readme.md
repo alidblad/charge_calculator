@@ -49,6 +49,7 @@ charge_calculator:
 		max_sessions: 2
 		min_session_minutes: 60
 		min_saving_ratio: 0.05
+		max_drain_kw: 50.0
 		break_even: true
 		round_trip_efficiency: 0.88
 		cycle_cost: 0.05
@@ -111,9 +112,10 @@ charge_calculator:
 | `ready_by_entity` | – | car | Optional `input_text` helper for a GUI-editable deadline; overrides `ready_by` |
 | `plugged_in_entity` | – | car | Charging is blocked unless this is on |
 | `reserve_pct` | `10` | house | Floor the battery is never planned below || `break_even` | `false` | house | Skip charging that cannot pay for itself |
+| `max_drain_kw` | `50` | house | Ignore drain samples above this limit and clear invalid stored samples |
 | `round_trip_efficiency` | `0.9` | house | Charge/discharge efficiency |
 | `cycle_cost` | `0.0` | house | Wear cost per kWh |
-| `load_entity` | – | house | House load sensor; more accurate than learning from SoC |
+| `load_entity` | – | house | Instantaneous house-load power sensor in `W` or `kW`; more accurate than learning from SoC |
 | `discharge` | `false` | house | Enable discharge scheduling |
 | `discharge_enable_entity` | – | house | Optional external toggle for discharge |
 | `discharge_effect` | `4.0` | house | Discharge power in kW |
@@ -157,7 +159,8 @@ efficiency + cycle_cost)` clears `min_discharge_spread`.
 **Drain learning.** Consumption is bucketed by hour of day and weekday/weekend, updated with an
 exponential moving average and persisted across restarts. A flat average would mis-predict
 badly, since evening load is far above night load. If `load_entity` is set it is used directly;
-otherwise samples are taken from falling state of charge.
+it must report instantaneous power in `W` or `kW`, not energy in `Wh` or `kWh`. Otherwise samples
+are taken from falling state of charge.
 
 **Solar.** SMHI publishes no irradiance, so production is approximated from solar elevation
 (via HA's astral location) scaled by forecast `cloud_coverage`. It is only accurate enough to

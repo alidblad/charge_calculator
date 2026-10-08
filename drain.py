@@ -37,6 +37,7 @@ class DrainTracker:
         soc_entity: Optional[str],
         battery_size: float,
         load_entity: Optional[str] = None,
+        max_drain_kw: float = 50.0,
         alpha: float = DEFAULTS["drain_alpha"],
         min_samples: int = DEFAULTS["drain_min_samples"],
     ) -> None:
@@ -44,6 +45,7 @@ class DrainTracker:
         self.soc_entity = soc_entity
         self.load_entity = load_entity
         self.battery_size = battery_size
+        self.max_drain_kw = max_drain_kw if max_drain_kw > 0 else 50.0
         self.alpha = alpha
         self.min_samples = min_samples
         self._store = Store(hass, DRAIN_STORAGE_VERSION, DRAIN_STORAGE_KEY)
@@ -64,6 +66,11 @@ class DrainTracker:
                 self._profile[key] = [as_float(v) for v in profile[key]]
             if isinstance(counts.get(key), list) and len(counts[key]) == 24:
                 self._counts[key] = [int(v or 0) for v in counts[key]]
+            for index, rate in enumerate(self._profile[key]):
+                if rate is not None and (rate <= 0 or rate > self.max_drain_kw):
+                    self._profile[key][index] = None
+                    self._counts[key][index] = 0
+                    self._dirty = True
         _LOGGER.debug("Loaded drain profile with %s learned hours", self.learned_hours)
 
     async def async_save(self) -> None:
@@ -108,7 +115,12 @@ class DrainTracker:
             self._sample_from_soc()
 
     def _record(self, moment: datetime.datetime, kw: float) -> None:
-        if kw <= 0:
+        if kw <= 0 or kw > self.max_drain_kw:
+            _LOGGER.debug(
+                "Ignoring house drain sample %.3f kW outside the valid range (0, %.1f]",
+                kw,
+                self.max_drain_kw,
+            )
             return
         bucket = day_type(moment)
         hour = dt_util.as_local(moment).hour
@@ -124,8 +136,18 @@ class DrainTracker:
         value = as_float(getattr(state, "state", None))
         if value is None:
             return
-        unit = (getattr(state, "attributes", {}) or {}).get("unit_of_measurement", "")
-        kw = value / 1000.0 if str(unit).lower() == "w" else value
+        unit = str(
+            (getattr(state, "attributes", {}) or {}).get("unit_of_measurement", "")
+        ).strip().lower()
+        if unit in ("w", "watt", "watts"):
+            kw = value / 1000.0
+        elif unit in ("kw", "kilowatt", "kilowatts"):
+            kw = value
+        else:
+            _LOGGER.debug(
+                "Ignoring house load sample with unsupported unit %r", unit
+            )
+            return
         self._record(dt_util.utcnow(), kw)
 
     def _sample_from_soc(self) -> None:
