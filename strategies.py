@@ -248,9 +248,13 @@ class HouseStrategy(BaseStrategy):
         needed = self.horizon.periods_for_hours(hours)
         details.update({"hours_needed": round(hours, 2), "periods_needed": needed})
 
+        urgent_fallback = False
         if deadline is not None and len(periods) < needed:
-            periods = self.horizon.periods
             details["deadline_relaxed"] = True
+            periods = scheduler.earliest_contiguous_periods(self.horizon.periods, needed)
+            urgent_fallback = bool(periods)
+            if not periods:
+                periods = self.horizon.periods
 
         constraints = self._window_constraints()
         plan = scheduler.plan_windows(
@@ -283,7 +287,13 @@ class HouseStrategy(BaseStrategy):
         return PlanResult(
             self.task,
             STATUS_SCHEDULED,
-            "Cheapest window(s) before the battery reaches its reserve",
+            (
+                "Earliest available window; reserve deadline cannot fit a full session"
+                if urgent_fallback
+                else "Cheapest available window; reserve deadline cannot fit a full session"
+                if details.get("deadline_relaxed")
+                else "Cheapest window(s) before the battery reaches its reserve"
+            ),
             windows=plan["windows"],
             details=details,
         )

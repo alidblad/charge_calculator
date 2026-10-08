@@ -22,6 +22,18 @@ def contiguous_blocks(periods: List[Dict[str, Any]]) -> List[List[Dict[str, Any]
     return blocks
 
 
+def earliest_contiguous_periods(
+    periods: List[Dict[str, Any]], size: int
+) -> List[Dict[str, Any]]:
+    """Return the first contiguous block large enough for the requested session."""
+    if size <= 0:
+        return []
+    for block in contiguous_blocks(periods):
+        if len(block) >= size:
+            return block[:size]
+    return []
+
+
 def candidate_windows(periods: List[Dict[str, Any]], size: int) -> List[Dict[str, Any]]:
     """Every contiguous run of `size` periods, with its average price."""
     candidates: List[Dict[str, Any]] = []

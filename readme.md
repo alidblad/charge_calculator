@@ -145,7 +145,10 @@ price horizon is chosen. An active charging session remains pinned until its pla
 that becomes the deadline. Expected PV surplus (production minus predicted house load) is
 subtracted from the energy to buy, so a sunny tomorrow means charging less — or nothing. With
 `break_even: true` the plan is dropped if `charge_price / round_trip_efficiency + cycle_cost`
-is not below the average of the most expensive periods in the horizon.
+is not below the average of the most expensive periods in the horizon. If the reserve deadline
+cannot fit a full charge session, the planner prefers the earliest contiguous full session in the
+horizon and marks `deadline_relaxed`. If no such session exists, it falls back to the cheapest
+available window.
 
 **Discharge.** With `discharge: true` the priciest contiguous block that does not overlap a
 planned charge window is selected, and used only if `discharge_price - (charge_price /
