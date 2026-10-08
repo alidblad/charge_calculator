@@ -137,7 +137,10 @@ class CarStrategy(BaseStrategy):
             deadline = next_occurrence(ready_by, self.now)
             details["ready_by"] = local_hm(deadline)
 
-        periods = self.horizon.before(deadline)
+        charge_horizon_end = (
+            deadline + datetime.timedelta(hours=hours) if deadline is not None else None
+        )
+        periods = self.horizon.before(charge_horizon_end)
         needed = self.horizon.periods_for_hours(hours)
         details.update({"hours_needed": round(hours, 2), "periods_needed": needed})
 
@@ -292,7 +295,7 @@ class HouseStrategy(BaseStrategy):
                 if urgent_fallback
                 else "Cheapest available window; reserve deadline cannot fit a full session"
                 if details.get("deadline_relaxed")
-                else "Cheapest window(s) before the battery reaches its reserve"
+                else "Cheapest window(s) starting by the battery's predicted reserve time"
             ),
             windows=plan["windows"],
             details=details,

@@ -143,8 +143,9 @@ local time (`HH:MM`) in the helper to set the deadline; clearing it removes the 
 replans immediately. With neither deadline option set, the cheapest window in the available
 price horizon is chosen. An active charging session remains pinned until its planned stop.
 
-**House.** The drain profile gives an estimated time until the battery hits `reserve_pct`, and
-that becomes the deadline. Expected PV surplus (production minus predicted house load) is
+**House.** The drain profile estimates when the battery reaches `reserve_pct`; a charge session
+must start by then, but may finish afterward. Among eligible sessions the planner chooses the
+cheapest prices. Expected PV surplus (production minus predicted house load) is
 subtracted from the energy to buy, so a sunny tomorrow means charging less — or nothing. With
 `break_even: true` the plan is dropped if `charge_price / round_trip_efficiency + cycle_cost`
 is not below the average of the most expensive periods in the horizon. If the reserve deadline
