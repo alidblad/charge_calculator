@@ -247,28 +247,33 @@ class HouseStrategy(BaseStrategy):
         if runway_hours is not None:
             deadline = self.now + datetime.timedelta(hours=runway_hours)
 
-        periods = self.horizon.before(deadline)
+        periods = self.horizon.periods
         needed = self.horizon.periods_for_hours(hours)
         details.update({"hours_needed": round(hours, 2), "periods_needed": needed})
 
-        urgent_fallback = False
-        if deadline is not None and len(periods) < needed:
-            details["deadline_relaxed"] = True
-            periods = scheduler.earliest_contiguous_periods(self.horizon.periods, needed)
-            urgent_fallback = bool(periods)
-            if not periods:
-                periods = self.horizon.periods
-
         constraints = self._window_constraints()
+        max_windows = as_int(
+            self.ctx.override("house_max_sessions", self.option("max_sessions")),
+            HOUSE_DEFAULTS["max_sessions"],
+        )
         plan = scheduler.plan_windows(
             periods,
             total_periods=needed,
-            max_windows=as_int(
-                self.ctx.override("house_max_sessions", self.option("max_sessions")),
-                HOUSE_DEFAULTS["max_sessions"],
-            ),
+            max_windows=max_windows,
+            latest_start=deadline,
             **constraints,
         )
+        urgent_fallback = False
+        if deadline is not None and not plan["windows"]:
+            details["deadline_relaxed"] = True
+            periods = scheduler.earliest_contiguous_periods(self.horizon.periods, needed)
+            urgent_fallback = bool(periods)
+            plan = scheduler.plan_windows(
+                periods or self.horizon.periods,
+                total_periods=needed,
+                max_windows=max_windows,
+                **constraints,
+            )
         details.update(
             {
                 "plan_cost": plan["cost"],
@@ -291,9 +296,9 @@ class HouseStrategy(BaseStrategy):
             self.task,
             STATUS_SCHEDULED,
             (
-                "Earliest available window; reserve deadline cannot fit a full session"
+                "Earliest available window; no full plan can start by the reserve deadline"
                 if urgent_fallback
-                else "Cheapest available window; reserve deadline cannot fit a full session"
+                else "Cheapest available window; no full plan can start by the reserve deadline"
                 if details.get("deadline_relaxed")
                 else "Cheapest window(s) starting by the battery's predicted reserve time"
             ),

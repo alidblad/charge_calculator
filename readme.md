@@ -97,6 +97,47 @@ charge_calculator:
 			entity_id: switch.car_charger
 ```
 
+### Excluding EV charging from the house-load forecast
+
+If the household power sensor includes EV charging, use a separate sensor for drain learning.
+For a household sensor in W and an EV charger sensor in W or kW, merge this sensor into your
+existing `template` sensor list (do not add a second top-level `template` key):
+
+```yaml
+- name: "House load excluding EV"
+  unique_id: house_load_excluding_ev
+  unit_of_measurement: W
+  device_class: power
+  state_class: measurement
+  availability: >-
+    {{ is_number(states('sensor.local_hous_energy_consumtion'))
+       and is_number(states('sensor.uppfarten_power'))
+       and state_attr('sensor.local_hous_energy_consumtion', 'unit_of_measurement') == 'W'
+       and state_attr('sensor.uppfarten_power', 'unit_of_measurement') in ['W', 'kW'] }}
+  state: >-
+    {% set house_w = states('sensor.local_hous_energy_consumtion') | float(0) %}
+    {% set ev_power = states('sensor.uppfarten_power') | float(0) %}
+    {% set ev_w = ev_power * 1000
+       if state_attr('sensor.uppfarten_power', 'unit_of_measurement') == 'kW'
+       else ev_power %}
+    {{ [house_w - ev_w, 0] | max | round(0) }}
+```
+
+Then change `charge_calculator.house_battery.load_entity` to
+`sensor.house_load_excluding_ev` (verify the entity ID after creation). Missing, nonnumeric,
+or unsupported-unit inputs make this sensor unavailable rather than reporting zero load.
+The existing household sensor is unchanged. Do not subtract house-battery charging again
+if the original sensor already excludes it.
+
+Validate the Home Assistant configuration and restart after applying both changes.
+The tracker clears its stored drain estimates when `load_entity` changes. Existing load-sensor
+profiles saved without source information are also cleared once on upgrade, since their source
+cannot be verified. State-of-charge-only legacy profiles are preserved.
+Until enough new samples are learned, house charging has no reserve deadline.
+
+This forecasts household demand excluding the EV; it does not model additional house-battery
+drain if the EV is actually supplied by the house battery.
+
 ### Battery options
 
 | Option | Default | Applies to | Meaning |
@@ -149,9 +190,10 @@ cheapest prices. Expected PV surplus (production minus predicted house load) is
 subtracted from the energy to buy, so a sunny tomorrow means charging less — or nothing. With
 `break_even: true` the plan is dropped if `charge_price / round_trip_efficiency + cycle_cost`
 is not below the average of the most expensive periods in the horizon. If the reserve deadline
-cannot fit a full charge session, the planner prefers the earliest contiguous full session in the
-horizon and marks `deadline_relaxed`. If no such session exists, it falls back to the cheapest
-available window.
+cannot be met by a full plan whose sessions each start by that deadline, the planner prefers the
+earliest contiguous full session in the horizon and marks `deadline_relaxed`. If no such session
+exists, it falls back to the cheapest available window. A session finishing after the reserve
+deadline does not by itself relax the deadline.
 
 **Discharge.** With `discharge: true` the priciest contiguous block that does not overlap a
 planned charge window is selected, and used only if `discharge_price - (charge_price /

@@ -1,6 +1,7 @@
 """Window selection: find the cheapest (or priciest) contiguous periods to act in."""
 from __future__ import annotations
 
+import datetime
 import logging
 import math
 from typing import Any, Dict, List, Optional
@@ -48,8 +49,16 @@ def candidate_windows(periods: List[Dict[str, Any]], size: int) -> List[Dict[str
     return candidates
 
 
-def cheapest_window(periods: List[Dict[str, Any]], size: int) -> Optional[Dict[str, Any]]:
+def cheapest_window(
+    periods: List[Dict[str, Any]],
+    size: int,
+    latest_start: Optional[datetime.datetime] = None,
+) -> Optional[Dict[str, Any]]:
     candidates = candidate_windows(periods, size)
+    if latest_start is not None:
+        candidates = [
+            item for item in candidates if item["periods"][0]["start"] <= latest_start
+        ]
     return min(candidates, key=lambda item: item["value"]) if candidates else None
 
 
@@ -63,6 +72,7 @@ def _greedy_plan(
     total_periods: int,
     window_count: int,
     min_window_periods: int,
+    latest_start: Optional[datetime.datetime] = None,
 ) -> Optional[List[Dict[str, Any]]]:
     remaining = list(periods)
     selected: List[Dict[str, Any]] = []
@@ -73,10 +83,10 @@ def _greedy_plan(
         size = math.ceil(remaining_periods / remaining_windows)
         size = min(max(size, min_window_periods), remaining_periods)
 
-        best = cheapest_window(remaining, size)
+        best = cheapest_window(remaining, size, latest_start)
         while best is None and size > 1:
             size -= 1
-            best = cheapest_window(remaining, size)
+            best = cheapest_window(remaining, size, latest_start)
         if best is None:
             return None
 
@@ -124,8 +134,9 @@ def plan_windows(
     max_windows: int = 1,
     min_window_periods: int = 1,
     min_saving_ratio: float = 0.0,
+    latest_start: Optional[datetime.datetime] = None,
 ) -> Dict[str, Any]:
-    """Cheapest plan, only splitting into more sessions when the saving is worth it."""
+    """Cheapest plan, optionally requiring each session to start by a deadline."""
     empty = {"windows": [], "cost": None, "baseline_cost": None, "saving": None}
     if total_periods <= 0 or not periods:
         return empty
@@ -141,7 +152,9 @@ def plan_windows(
         if window_count > 1 and window_count * min_window_periods > total_periods:
             break
 
-        plan = _greedy_plan(periods, total_periods, window_count, min_window_periods)
+        plan = _greedy_plan(
+            periods, total_periods, window_count, min_window_periods, latest_start
+        )
         if not plan:
             continue
 

@@ -59,6 +59,14 @@ class DrainTracker:
 
     async def async_load(self) -> None:
         stored = await self._store.async_load() or {}
+        if stored and stored.get("load_entity") != self.load_entity:
+            _LOGGER.info(
+                "House load source changed (%s -> %s); clearing learned drain profile",
+                stored.get("load_entity"),
+                self.load_entity,
+            )
+            self._dirty = True
+            return
         profile = stored.get("profile") or {}
         counts = stored.get("counts") or {}
         for key in DAY_TYPES:
@@ -76,7 +84,13 @@ class DrainTracker:
     async def async_save(self) -> None:
         if not self._dirty:
             return
-        await self._store.async_save({"profile": self._profile, "counts": self._counts})
+        await self._store.async_save(
+            {
+                "load_entity": self.load_entity,
+                "profile": self._profile,
+                "counts": self._counts,
+            }
+        )
         self._dirty = False
 
     @callback
